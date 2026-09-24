@@ -182,6 +182,51 @@ jobs:
           open('app/src/main/res/mipmap-xxhdpi/ic_launcher.png', 'wb').write(png)
           print('icon ok')
           XEOF
+          # ===== wink 版图标(闭一只眼 + 两颗爱心)=====
+import zlib, struct, os, math
+def wink_icon(size, path):
+    px = []
+    for y in range(size):
+        row = []
+        for x in range(size):
+            d = math.hypot(x - size / 2.0, y - size / 2.0) / (size * 0.62)
+            t = max(0.0, 1.0 - d) ** 2
+            row.append((int(23 + 37 * t), int(23 + 11 * t), int(27 + 15 * t)))
+        px.append(row)
+    def rc(x0, y0, x1, y1, c):
+        for yy in range(int(y0), int(y1)):
+            for xx in range(int(x0), int(x1)):
+                if 0 <= xx < size and 0 <= yy < size: px[yy][xx] = c
+    U = size / 32.0
+    def C(x0, y0, x1, y1, c): rc(x0 * U, y0 * U, x1 * U, y1 * U, c)
+    S, OX, OY = 0.70, 4.8, 7.0
+    def P(x, y, w, h, c): C(OX + x * S, OY + y * S, OX + (x + w) * S, OY + (y + h) * S, c)
+    def stamp(rows, x0, y0, u, c):
+        for j, r in enumerate(rows):
+            for i, ch in enumerate(r):
+                if ch == 'x': C(x0 + i * u, y0 + j * u, x0 + (i + 1) * u, y0 + (j + 1) * u, c)
+    HEART = [' xx xx ', 'xxxxxxx', 'xxxxxxx', ' xxxxx ', '  xxx  ', '   x   ']
+    P(0, 10, 3, 4, (224, 142, 115)); P(29, 10, 3, 4, (224, 142, 115))
+    P(3, 5, 26, 14, (229, 151, 124))
+    P(5, 19, 3, 3, (229, 151, 124)); P(11, 19, 3, 3, (229, 151, 124))
+    P(18, 19, 3, 3, (229, 151, 124)); P(24, 19, 3, 3, (229, 151, 124))
+    P(4.5, 11.5, 2.5, 1.5, (255, 143, 168)); P(25, 11.5, 2.5, 1.5, (255, 143, 168))
+    P(8, 11.7, 2, 1.0, (26, 26, 26))
+    P(22, 10, 2, 4, (26, 26, 26)); P(22, 10, 0.7, 1.1, (252, 244, 240))
+    stamp(HEART, 1.6, 4.6, 0.72, (255, 95, 166))
+    stamp(HEART, 25.6, 2.6, 0.72, (255, 95, 166))
+    raw = b''.join(b'\x00' + b''.join(bytes(p) for p in r) for r in px)
+    def ck(t, d):
+        return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+    data = (b'\x89PNG\r\n\x1a\n'
+            + ck(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0))
+            + ck(b'IDAT', zlib.compress(raw, 9))
+            + ck(b'IEND', b''))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, 'wb').write(data)
+wink_icon(144, 'app/src/main/res/mipmap-xxhdpi/ic_launcher.png')
+wink_icon(192, 'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png')
+print('wink icon ok')
           python3 icon.py
 
       - name: 打包 APK
