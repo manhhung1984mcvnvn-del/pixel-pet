@@ -104,34 +104,38 @@ if (f) immersive();
 EOF
 
 cat > icon.py <<'EOF'
-import zlib, struct, os
+import zlib, struct, os, math
 W = H = 144
-BG = (23, 23, 27)
-px = [[BG] * W for _ in range(H)]
-R = lambda x0, y0, x1, y1, c: [px[y].__setitem__(x, c) for y in range(int(y0), int(y1)) for x in range(int(x0), int(x1)) if 0 <= x < W and 0 <= y < H]
+U = 144.0 / 330.0
+glow = lambda x, y: tuple(int(a + (b - a) * max(0.0, 1.0 - math.hypot(x - 72.0, y - 72.0) / 89.28)) for a, b in zip((23, 23, 27), (58, 34, 40)))
+px = [[glow(x, y) for x in range(W)] for y in range(H)]
+R = lambda x0, y0, x1, y1, c: [px[y].__setitem__(x, c) for y in range(int(round(y0)), int(round(y1))) for x in range(int(round(x0)), int(round(x1))) if 0 <= x < W and 0 <= y < H]
+PS = 7.22 * U
+POX = 49.5 * U
+POY = 72.2 * U
+P = lambda x, y, w, h, c: R(POX + x * PS, POY + y * PS, POX + (x + w) * PS, POY + (y + h) * PS, c)
+HF = [(1, 0, 2, 1), (4, 0, 2, 1), (0, 1, 7, 1), (0, 2, 7, 1), (1, 3, 5, 1), (2, 4, 3, 1), (3, 5, 1, 1)]
+WD = lambda hx, hy, hs, c: [R(hx + a * hs, hy + b * hs, hx + (a + w) * hs, hy + (b + h) * hs, c) for (a, b, w, h) in HF]
 BODY = (229, 151, 124)
 DARK = (224, 142, 115)
 INK = (26, 26, 26)
 WHITE = (252, 244, 240)
 CHEEK = (255, 143, 168)
 HRT = (255, 95, 166)
-R(6, 64, 16, 86, DARK)
-R(128, 64, 138, 86, DARK)
-R(16, 34, 128, 112, BODY)
-R(22, 112, 34, 128, BODY)
-R(44, 112, 56, 128, BODY)
-R(66, 112, 78, 128, BODY)
-R(88, 112, 100, 128, BODY)
-R(22, 70, 42, 80, CHEEK)
-R(102, 70, 122, 80, CHEEK)
-R(84, 56, 96, 84, INK)
-R(86, 58, 90, 64, WHITE)
-R(48, 68, 72, 76, INK)
-R(62, 14, 70, 22, HRT)
-R(74, 14, 82, 22, HRT)
-R(56, 20, 88, 32, HRT)
-R(60, 32, 84, 40, HRT)
-R(66, 40, 78, 48, HRT)
+P(0, 10, 3, 4, DARK)
+P(29, 10, 3, 4, DARK)
+P(3, 5, 26, 14, BODY)
+P(5, 19, 3, 3, BODY)
+P(11, 19, 3, 3, BODY)
+P(18, 19, 3, 3, BODY)
+P(24, 19, 3, 3, BODY)
+P(4.5, 11.5, 2.5, 1.5, CHEEK)
+P(25, 11.5, 2.5, 1.5, CHEEK)
+P(8, 11.7, 2, 1.0, INK)
+P(22, 10, 2, 4, INK)
+P(22, 10, 0.7, 1.1, WHITE)
+WD(7.2, 20.7, 3.24, HRT)
+WD(115.2, 11.7, 3.24, HRT)
 raw = b''.join(b'\x00' + b''.join(bytes(p) for p in row) for row in px)
 ck = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
 data = b'\x89PNG\r\n\x1a\n' + ck(b'IHDR', struct.pack('>IIBBBBB', W, H, 8, 2, 0, 0, 0)) + ck(b'IDAT', zlib.compress(raw, 9)) + ck(b'IEND', b'')
@@ -144,11 +148,4 @@ python3 icon.py
 if command -v gradle >/dev/null 2>&1; then
 echo "使用系统 Gradle"
 else
-echo "下载 Gradle 8.2"
-curl -fsSL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
-unzip -q /tmp/g.zip -d /opt
-export PATH="/opt/gradle-8.2/bin:$PATH"
-fi
-gradle --version
-gradle assembleDebug --no-daemon
-echo "打包完成"
+echo "下载 Gradle
