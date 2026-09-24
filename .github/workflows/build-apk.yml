@@ -1,0 +1,194 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: mkdir -p ~/.android
+
+      - name: 缓存签名密钥(以后能覆盖安装、存档不丢)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android
+          key: pet-keystore-v1
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: 生成安卓工程
+        run: |
+          mkdir -p app/src/main/java/com/pet app/src/main/assets app/src/main/res/mipmap-xxhdpi
+          F=$(ls -1 *.html *.HTML 2>/dev/null | head -1)
+          echo "网页文件 = $F"
+          cp "$F" app/src/main/assets/index.html
+
+          cat > settings.gradle <<'XEOF'
+          pluginManagement {
+            repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+            repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "PixelPet"
+          include ':app'
+          XEOF
+
+          cat > build.gradle <<'XEOF'
+          plugins {
+            id 'com.android.application' version '8.1.4' apply false
+          }
+          XEOF
+
+          cat > app/build.gradle <<'XEOF'
+          plugins { id 'com.android.application' }
+
+          android {
+            namespace 'com.pet'
+            compileSdk 34
+            defaultConfig {
+              applicationId "com.pet.pixelpet"
+              minSdk 21
+              targetSdk 34
+              versionCode 1
+              versionName "1.0"
+            }
+            buildTypes {
+              release { minifyEnabled false }
+            }
+            compileOptions {
+              sourceCompatibility JavaVersion.VERSION_17
+              targetCompatibility JavaVersion.VERSION_17
+            }
+          }
+          XEOF
+
+          cat > app/src/main/AndroidManifest.xml <<'XEOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.VIBRATE" />
+            <application
+                android:label="小桌宠"
+                android:icon="@mipmap/ic_launcher"
+                android:hardwareAccelerated="true"
+                android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+              <activity
+                  android:name=".MainActivity"
+                  android:exported="true"
+                  android:configChanges="orientation|screenSize|keyboardHidden|uiMode">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          XEOF
+
+          cat > app/src/main/java/com/pet/MainActivity.java <<'XEOF'
+          package com.pet;
+
+          import android.app.Activity;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+            private WebView web;
+
+            @Override
+            protected void onCreate(Bundle b) {
+              super.onCreate(b);
+              getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+              getWindow().setStatusBarColor(0xFF17171B);
+              getWindow().setNavigationBarColor(0xFF17171B);
+
+              web = new WebView(this);
+              WebSettings s = web.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setDatabaseEnabled(true);
+              s.setAllowFileAccess(true);
+              s.setAllowContentAccess(true);
+              s.setUseWideViewPort(true);
+              s.setLoadWithOverviewMode(true);
+              s.setMediaPlaybackRequiresUserGesture(false);
+              if (Build.VERSION.SDK_INT >= 21) {
+                s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+              }
+              web.setBackgroundColor(0xFF17171B);
+              web.setWebViewClient(new WebViewClient());
+              setContentView(web);
+              web.loadUrl("file:///android_asset/index.html");
+              immersive();
+            }
+
+            private void immersive() {
+              getWindow().getDecorView().setSystemUiVisibility(
+                  View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            }
+
+            @Override
+            public void onWindowFocusChanged(boolean f) {
+              super.onWindowFocusChanged(f);
+              if (f) immersive();
+            }
+          }
+          XEOF
+
+          cat > icon.py <<'XEOF'
+          import zlib, struct
+          W = H = 144
+          bg = (23, 23, 27); body = (229, 151, 124); dark = (224, 142, 115); ink = (26, 26, 26)
+          px = [[bg] * W for _ in range(H)]
+          def rect(x0, y0, x1, y1, c):
+              for y in range(int(y0), int(y1)):
+                  for x in range(int(x0), int(x1)):
+                      if 0 <= x < W and 0 <= y < H: px[y][x] = c
+          S = 4.2; OX = 7; OY = 22
+          def R(x, y, w, h, c): rect(OX + x * S, OY + y * S, OX + (x + w) * S, OY + (y + h) * S, c)
+          R(0, 10, 3, 4, dark); R(29, 10, 3, 4, dark)
+          R(3, 5, 26, 14, body)
+          R(5, 19, 3, 3, body); R(11, 19, 3, 3, body)
+          R(18, 19, 3, 3, body); R(24, 19, 3, 3, body)
+          R(8, 10, 2, 4, ink); R(22, 10, 2, 4, ink)
+          raw = b''.join(b'\x00' + b''.join(bytes(p) for p in row) for row in px)
+          def chunk(t, d):
+              return struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+          png = (b'\x89PNG\r\n\x1a\n'
+                 + chunk(b'IHDR', struct.pack('>IIBBBBB', W, H, 8, 2, 0, 0, 0))
+                 + chunk(b'IDAT', zlib.compress(raw, 9))
+                 + chunk(b'IEND', b''))
+          open('app/src/main/res/mipmap-xxhdpi/ic_launcher.png', 'wb').write(png)
+          print('icon ok')
+          XEOF
+          python3 icon.py
+
+      - name: 打包 APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: 上传成品
+        uses: actions/upload-artifact@v4
+        with:
+          name: pet-apk
+          path: app/build/outputs/apk/debug/*.apk
