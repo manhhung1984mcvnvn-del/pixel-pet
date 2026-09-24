@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#17171b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小桌宠">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg">
+<title>像素桌宠</title>
+<style>
+:root{
+  --panel:#1d1d24; --line:#3a3a44; --text:#d7d3cc; --dim:#8a8a94;
+  --accent:#e5977c; --pink:#ff9ec4; --bg:#17171b;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Courier New',ui-monospace,monospace;
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  -webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:manipulation;
+}
+body{position:fixed;inset:0}
+#stage{position:relative;width:100%;height:100%;overflow:hidden}
+
+.sparkle{position:absolute;pointer-events:none;z-index:0;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+#topbar{
+  position:absolute;top:calc(8px + var(--safe-t));left:0;right:0;z-index:5;
+  display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+  padding:0 10px;pointer-events:none;
+}
+#topbar>*{pointer-events:auto}
+#hud{
+  background:rgba(29,29,36,.88);border:2px solid var(--line);
+  padding:7px 10px;font-size:11px;letter-spacing:1px;color:var(--dim);max-width:64vw;
+}
+#hud .line1{margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud b{color:var(--pink);font-weight:normal}
+#hud i{color:var(--accent);font-style:normal}
+.bar{width:100%;min-width:96px;height:8px;background:#101015;border:2px solid var(--line)}
+.bar span{display:block;height:100%;width:0;background:var(--pink);transition:width .4s ease-out}
+#hud-next{margin-top:5px;font-size:10px;color:#55555c;letter-spacing:0}
+#hud-days{margin-top:5px;font-size:10px;color:#7f7f8c;letter-spacing:0}
+#hud-days b{color:var(--accent)}
+#btn-wardrobe{
+  flex:0 0 auto;width:46px;height:46px;font-size:20px;line-height:1;
+  background:var(--panel);border:2px solid var(--line);color:var(--text);cursor:pointer;
+}
+#btn-wardrobe.on{border-color:var(--accent)}
+
+#pet{
+  position:absolute;left:50%;top:44%;width:112px;height:84px;
+  translate:-50% -50%;transform:scaleX(var(--face,1));
+  transition:transform .18s steps(2),top .28s ease;
+  z-index:2;cursor:pointer;touch-action:none;
+}
+#stage.sheet-open #pet{top:23%}
+.flip{position:absolute;inset:0}
+.bob{width:100%;height:100%;animation:idleBob 2.4s ease-in-out infinite}
+.sprite{display:block;width:100%;height:100%;image-rendering:pixelated}
+
+#pet .shadow{
+  position:absolute;left:50%;top:calc(100% - 7px);
+  width:58px;height:9px;translate:-50% 0;background:rgba(0,0,0,.5);
+  animation:shadowPulse 2.4s ease-in-out infinite;
+}
+@keyframes shadowPulse{0%,100%{opacity:.55;transform:scaleX(1)}50%{opacity:.45;transform:scaleX(.94)}}
+#pet.jump .shadow{animation:shadowHop .42s ease-out}
+@keyframes shadowHop{0%{transform:scaleX(1);opacity:.55}40%{transform:scaleX(.7);opacity:.3}100%{transform:scaleX(1);opacity:.55}}
+
+@keyframes idleBob {0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+@keyframes hop     {0%{transform:translateY(0)}40%{transform:translateY(-20px)}100%{transform:translateY(0)}}
+@keyframes happyHop{0%{transform:translateY(0)}30%{transform:translateY(-24px)}55%{transform:translateY(0)}72%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+@keyframes breathe {0%,100%{transform:translateY(0)}50%{transform:translateY(2px)}}
+@keyframes shake   {0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes typeBob {0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
+@keyframes swap    {0%{transform:translateY(0) scaleY(1)}35%{transform:translateY(-7px) scaleY(1.08)}70%{transform:translateY(0) scaleY(.93)}100%{transform:translateY(0) scaleY(1)}}
+@keyframes spinIt{
+  0%{transform:translateY(0) scaleX(1)}18%{transform:translateY(-9px) scaleX(.12)}
+  36%{transform:translateY(0) scaleX(-1)}54%{transform:translateY(-9px) scaleX(-.12)}
+  72%{transform:translateY(0) scaleX(1)}86%{transform:translateY(-4px) scaleX(1)}100%{transform:translateY(0) scaleX(1)}
+}
+@keyframes nuzzleIt{
+  0%,100%{transform:translate(0,0) rotate(0)}
+  20%{transform:translate(-5px,1px) rotate(-5deg)}40%{transform:translate(0,0) rotate(0)}
+  60%{transform:translate(5px,1px) rotate(5deg)}80%{transform:translate(0,0) rotate(0)}
+}
+@keyframes hugIt{
+  0%{transform:translateY(0) scale(1,1)}25%{transform:translateY(-7px) scale(1.1,.92)}
+  55%{transform:translateY(0) scale(.94,1.08)}78%{transform:translateY(-3px) scale(1.04,.98)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+@keyframes armHugL{0%,100%{transform:translate(0,0)}35%,75%{transform:translate(2.5px,-3.5px)}}
+@keyframes armHugR{0%,100%{transform:translate(0,0)}35%,75%{transform:translate(-2.5px,-3.5px)}}
+@keyframes danceIt{
+  0%{transform:translate(0,0) rotate(0) scaleY(1)}
+  12%{transform:translate(-6px,-7px) rotate(-6deg)}25%{transform:translate(0,0) rotate(0) scaleY(.9)}
+  37%{transform:translate(6px,-7px) rotate(6deg)}50%{transform:translate(0,0) rotate(0) scaleY(1.06)}
+  62%{transform:translate(-6px,-7px) rotate(-6deg)}75%{transform:translate(0,0) rotate(0) scaleY(.92)}
+  87%{transform:translate(6px,-7px) rotate(6deg)}100%{transform:translate(0,0) rotate(0) scaleY(1)}
+}
+@keyframes fireIt{
+  0%{transform:translateY(0) scale(1,1)}18%{transform:translateY(-4px) scale(1.06,.92)}
+  40%{transform:translateY(-26px) scale(.94,1.1)}72%{transform:translateY(-4px) scale(1.05,.95)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+@keyframes chewIt{
+  0%{transform:translateY(0) scale(1,1)}
+  12%{transform:translateY(-4px) scale(1.06,.94)}26%{transform:translateY(0) scale(.95,1.07)}
+  40%{transform:translateY(-4px) scale(1.06,.94)}54%{transform:translateY(0) scale(.95,1.07)}
+  68%{transform:translateY(-3px) scale(1.04,.96)}82%{transform:translateY(0) scale(.98,1.03)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+@keyframes sipIt{
+  0%{transform:translateY(0) scale(1,1)}
+  30%{transform:translateY(-2px) scale(1.03,.97)}
+  60%{transform:translateY(1px) scale(.98,1.02)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+@keyframes kissShyIt{
+  0%{transform:translate(0,0) scale(1,1)}
+  18%{transform:translate(-3px,-8px) scale(.92,1.1)}
+  38%{transform:translate(7px,0) scale(1.05,.95)}
+  58%{transform:translate(-2px,-2px) scale(.98,1.02)}
+  100%{transform:translate(0,0) scale(1,1)}
+}
+@keyframes kissHappyIt{
+  0%{transform:translateY(0) scale(1,1)}
+  22%{transform:translateY(-3px) scale(1.08,.92)}
+  50%{transform:translateY(0) scale(.95,1.05)}
+  74%{transform:translateY(-5px) scale(1.03,.97)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+@keyframes kissFreezeIt{
+  0%{transform:translateY(0) scale(1,1)}
+  30%{transform:translateY(-2px) scale(1.02,.98)}
+  70%{transform:translateY(-2px) scale(1.02,.98)}
+  100%{transform:translateY(0) scale(1,1)}
+}
+
+#pet.jump   .bob{animation:hop .42s ease-out}
+#pet.wiggle .bob{animation:happyHop .52s ease-out}
+#pet.angry  .bob{animation:shake .32s ease-in-out 3}
+#pet.sleep  .bob{animation:breathe 1.8s ease-in-out infinite}
+#pet.typing .bob{animation:typeBob .9s ease-in-out infinite}
+#pet.swap   .bob{animation:swap .5s ease-out}
+#pet.eat    .bob{animation:chewIt 1.5s ease-out}
+#pet.sip    .bob{animation:sipIt 1.6s ease-in-out}
+#pet.spin     .bob{animation:spinIt 1.1s ease-in-out}
+#pet.nuzzle   .bob{animation:nuzzleIt 1.4s ease-in-out}
+#pet.hug      .bob{animation:hugIt 1.6s ease-out}
+#pet.hug      .arm-l{animation:armHugL 1.6s ease-out}
+#pet.hug      .arm-r{animation:armHugR 1.6s ease-out}
+#pet.dance    .bob{animation:danceIt 1.7s ease-in-out 2}
+#pet.dance    .arm-l{animation:armTap .35s ease-in-out infinite alternate}
+#pet.dance    .arm-r{animation:armTap .35s ease-in-out infinite alternate-reverse}
+#pet.firework .bob{animation:fireIt 1.2s ease-out 2}
+#pet.kissshy    .bob{animation:kissShyIt .9s ease-out}
+#pet.kisshappy  .bob{animation:kissHappyIt 1.2s ease-out}
+#pet.kissfreeze .bob{animation:kissFreezeIt 1.4s ease-out}
+
+.outfit,.acc{display:none}
+#pet[data-outfit="maid"]   .o-maid,
+#pet[data-outfit="butler"] .o-butler,
+#pet[data-outfit="sailor"] .o-sailor,
+#pet[data-outfit="school"] .o-school,
+#pet[data-outfit="gym"]    .o-gym,
+#pet[data-outfit="yukata"] .o-yukata,
+#pet[data-outfit="santa"]  .o-santa,
+#pet[data-outfit="witch"]  .o-witch,
+#pet[data-outfit="pajama"] .o-pajama,
+#pet[data-prop="duster"]   .a-duster{display:block}
+
+/* 腮红:类名必须叫 .cheek,不能叫 .blush(会撞 #pet 的状态类) */
+.cheek{opacity:0;transition:opacity .25s}
+#pet.blush .cheek{opacity:.9}
+
+.eye{
+  transform-box:fill-box;transform-origin:center;
+  transform:translate(var(--ex,0px),var(--ey,0px)) scaleY(var(--eye-open,1));
+  transition:transform .09s ease-out,fill .18s;
+}
+#pet.blink{--eye-open:.12}
+#pet.sleep{--eye-open:.14}
+#pet.loved{--eye-open:.32}
+#pet.typing{--eye-open:.7}
+#pet.angry{--eye-open:.85}
+#pet.nuzzle{--eye-open:.35}
+#pet.hug{--eye-open:.4}
+#pet.spin{--eye-open:.85}
+#pet.eat{--eye-open:.45}
+#pet.sip{--eye-open:.18}
+#pet.kissshy{--eye-open:1.2}
+#pet.kisshappy{--eye-open:.15}
+#pet.kissfreeze{--eye-open:1}
+#pet.angry .eye{fill:#3a1a10}
+
+.brow{opacity:0;transform-box:fill-box;transform-origin:center;transition:opacity .12s}
+.brow-l{transform:rotate(12deg)}
+.brow-r{transform:rotate(-12deg)}
+#pet.angry .brow{opacity:1}
+
+.arm{transform-box:fill-box;transform-origin:top center}
+#pet.typing .arm-l{animation:armTap .28s ease-in-out infinite alternate}
+#pet.typing .arm-r{animation:armTap .28s ease-in-out infinite alternate-reverse}
+@keyframes armTap{from{transform:translateY(0)}to{transform:translateY(2.5px)}}
+
+.fx{
+  position:absolute;z-index:3;pointer-events:none;font-size:13px;font-weight:bold;
+  line-height:1;transform:translate(-50%,0);animation:floatUp 1.4s ease-out forwards;
+}
+.fx.zzz{color:#9aa0ff;font-size:14px}
+.fx.heart{color:#ff5fa6;font-size:16px}
+.fx.rage{color:#ff6b5f;font-size:15px}
+.fx.code{color:#6fe3c8}
+.fx.note{color:#d6a8ff;font-size:16px}
+.fx.kiss{color:#ff8fa8;font-size:15px}
+@keyframes floatUp{
+  0%{opacity:0;transform:translate(-50%,6px) scale(.6)}
+  20%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-46px) scale(1.15)}
+}
+.burst{position:absolute;width:4px;height:4px;z-index:3;pointer-events:none;animation:burstOut .65s ease-out forwards}
+.burst.big{width:5px;height:5px;animation-duration:.95s}
+@keyframes burstOut{
+  0%{opacity:1;transform:translate(-50%,-50%)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy)))}
+}
+.puff{
+  position:absolute;width:7px;height:7px;border-radius:50%;z-index:3;pointer-events:none;
+  background:rgba(207,227,239,.7);animation:puffUp 1.2s ease-out forwards;
+}
+@keyframes puffUp{
+  0%{opacity:0;transform:translate(-50%,0) scale(.6)}
+  30%{opacity:.9}
+  100%{opacity:0;transform:translate(-50%,-34px) scale(1.5)}
+}
+.gainfx{position:absolute;z-index:6;pointer-events:none;font-size:11px;color:var(--pink);animation:gainUp .9s ease-out forwards}
+@keyframes gainUp{0%{opacity:0;transform:translateY(2px)}25%{opacity:1}100%{opacity:0;transform:translateY(-22px)}}
+
+.snack{position:absolute;z-index:4;pointer-events:none;translate:-50% 0;
+  font-size:26px;line-height:1;animation:snackDrop .6s ease-in forwards}
+@keyframes snackDrop{
+  0%{opacity:0;transform:translateY(-32px) scale(.7)}
+  35%{opacity:1}
+  70%{opacity:1;transform:translateY(24px) scale(1)}
+  100%{opacity:0;transform:translateY(34px) scale(.5)}
+}
+.kissfly{
+  position:absolute;z-index:4;pointer-events:none;font-size:25px;line-height:1;
+  translate:-50% 0;animation:kissFly .7s ease-out forwards;
+}
+@keyframes kissFly{
+  0%{opacity:0;transform:translate(0,44px) scale(.6) rotate(-20deg)}
+  45%{opacity:1;transform:translate(0,0) scale(1.2) rotate(0deg)}
+  70%{transform:translate(0,-2px) scale(1)}
+  100%{opacity:0;transform:translate(0,-12px) scale(.7)}
+}
+
+#bubble{
+  position:absolute;z-index:3;pointer-events:none;translate:-50% -100%;
+  padding:6px 9px;background:var(--panel);border:2px solid var(--line);
+  font-size:12px;line-height:1;white-space:nowrap;opacity:0;transition:opacity .16s;
+}
+#bubble.show{opacity:1}
+
+#toast{
+  position:absolute;left:50%;top:calc(96px + var(--safe-t));translate:-50% 0;z-index:6;
+  padding:12px 18px;text-align:center;background:rgba(29,29,36,.97);
+  border:2px solid var(--accent);box-shadow:0 0 0 4px rgba(229,151,124,.12);
+  animation:toastIn .45s ease-out;max-width:88vw;
+}
+#toast.hide{display:none}
+#toast-title{font-size:12px;color:var(--accent);letter-spacing:2px;margin-bottom:8px}
+#toast-body{font-size:13px;line-height:1.5}
+@keyframes toastIn{0%{opacity:0;transform:translateY(-16px) scale(.92)}100%{opacity:1;transform:translateY(0) scale(1)}}
+
+#panel{
+  position:absolute;left:0;right:0;bottom:0;z-index:5;
+  display:flex;flex-direction:column;gap:7px;
+  padding:10px 10px calc(10px + var(--safe-b));
+  background:linear-gradient(180deg,rgba(23,23,27,0) 0%,rgba(23,23,27,.9) 34%,rgba(23,23,27,.98) 100%);
+}
+.wrap{width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:7px}
+.chips{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;min-height:40px;padding:0 14px;display:flex;align-items:center;gap:4px;
+  font-family:inherit;font-size:12px;color:var(--text);background:#1a1a20;
+  border:2px solid var(--line);cursor:pointer;white-space:nowrap;
+}
+.chip.on{border-color:#6fe3c8;color:#6fe3c8}
+.chip.locked{border-style:dashed;color:#5c5c66;border-color:#33333c}
+.chip.unlocked{animation:pop .5s ease-out}
+@keyframes pop{0%{transform:scale(.85)}45%{transform:scale(1.14)}100%{transform:scale(1)}}
+
+.acts{display:flex;gap:4px}
+.act{
+  flex:1 1 0;min-width:0;min-height:58px;padding:6px 0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-family:inherit;font-size:9px;line-height:1.1;color:var(--text);
+  background:var(--panel);border:2px solid var(--line);cursor:pointer;transition:opacity .2s;
+}
+.act .ico{font-size:18px;line-height:1}
+.act.on{border-color:#6fe3c8;color:#6fe3c8}
+.act:active,.chip:active{transform:translateY(1px)}
+
+#sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:8;
+  max-height:64%;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:14px 12px calc(18px + var(--safe-b));
+  background:var(--panel);border-top:2px solid var(--line);
+  transform:translateY(105%);transition:transform .26s ease-out;
+  box-shadow:0 -10px 30px rgba(0,0,0,.45);
+}
+#sheet.open{transform:translateY(0)}
+.sheet-inner{max-width:560px;margin:0 auto}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sheet-head .t{font-size:13px;letter-spacing:3px;color:var(--accent)}
+.wtitle{font-size:10px;color:#6a6a75;letter-spacing:3px;margin:14px 0 7px}
+.wtitle:first-of-type{margin-top:4px}
+.mini{min-height:38px;padding:0 14px;font-family:inherit;font-size:12px;
+  background:#1a1a20;border:2px solid var(--line);color:var(--text);cursor:pointer}
+.mini.danger{color:#ff8f8f;border-color:#5a3333}
+.mini.wide{width:100%;min-height:46px}
+.mini.accent{color:var(--accent);border-color:var(--accent)}
+
+.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.snack-btn{
+  position:relative;min-height:66px;display:flex;align-items:center;gap:9px;
+  padding:8px 10px;font-family:inherit;font-size:12px;color:var(--text);
+  background:#1a1a20;border:2px solid var(--line);cursor:pointer;text-align:left;
+  transition:opacity .2s;
+}
+.snack-btn:active{transform:translateY(1px)}
+.snack-btn .s-ico{font-size:24px;line-height:1;flex:0 0 auto}
+.snack-btn .s-txt{display:flex;flex-direction:column;gap:4px;line-height:1.1;min-width:0}
+.snack-btn .s-val{font-size:10px;color:var(--pink)}
+.snack-btn .s-cd{position:absolute;right:8px;bottom:6px;font-size:10px;color:#6a6a75}
+.snack-btn.cooling{opacity:.42}
+
+.wgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.wgrid button{
+  min-height:46px;display:flex;align-items:center;gap:8px;justify-content:flex-start;
+  padding:0 12px;font-family:inherit;font-size:12px;color:var(--text);
+  background:#1a1a20;border:2px solid var(--line);cursor:pointer;
+}
+.wgrid button.sel{border-color:var(--accent);color:var(--accent);background:#2a2020}
+.swatch{width:12px;height:12px;border:1px solid rgba(0,0,0,.5);flex:0 0 auto}
+.tips{font-size:11px;line-height:1.9;color:var(--dim);margin:0}
+.tips.hl{color:var(--accent)}
+
+#save-code{
+  width:100%;height:56px;resize:none;padding:8px;display:block;
+  font-family:inherit;font-size:11px;line-height:1.5;letter-spacing:0;
+  background:#101015;border:2px solid var(--line);color:var(--text);
+  word-break:break-all;user-select:text;-webkit-user-select:text;
+}
+.save-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.save-row .mini{flex:1 1 auto}
+
+#hint{
+  position:absolute;left:0;right:0;bottom:calc(132px + var(--safe-b));z-index:4;
+  text-align:center;font-size:11px;color:#6a6a75;letter-spacing:1px;
+  pointer-events:none;transition:opacity .8s;padding:0 16px;
+}
+#hint.gone{opacity:0}
+
+@media (min-width:640px){
+  #pet{width:128px;height:96px}
+  #hud{font-size:12px;max-width:320px}
+  .act{font-size:10px;min-height:64px}
+  .act .ico{font-size:21px}
+  .chip{font-size:13px;min-height:42px}
+  #hint{font-size:12px}
+  #sheet{max-height:58%}
+}
+@media (max-width:380px){
+  .act{min-height:54px}
+  .act .lbl{display:none}
+}
+@media (max-height:560px){
+  #pet{width:88px;height:66px;top:38%}
+  #stage.sheet-open #pet{top:20%}
+  .act{min-height:48px}
+  .act .ico{font-size:16px}
+  .chip{min-height:34px;font-size:11px}
+  #hint{display:none}
+}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <div id="topbar">
+    <div id="hud">
+      <div class="line1">♥ <b id="hud-love">0</b> · <i id="hud-lv">Lv.1 陌生</i></div>
+      <div class="bar"><span id="bar-fill"></span></div>
+      <div id="hud-next">距离 Lv.2「熟悉」还差 12</div>
+      <div id="hud-days"></div>
+    </div>
+    <button id="btn-wardrobe" aria-label="小屋">👗</button>
+  </div>
+
+  <div id="pet" data-outfit="none" data-prop="none">
+    <div class="shadow"></div>
+    <div class="flip">
+      <div class="bob">
+        <svg class="sprite" viewBox="0 0 32 24" shape-rendering="crispEdges" aria-hidden="true">
+          <rect class="arm arm-l" x="0"  y="10" width="3" height="4" fill="#e08e73"/>
+          <rect class="arm arm-r" x="29" y="10" width="3" height="4" fill="#e08e73"/>
+          <rect x="3" y="5" width="26" height="14" fill="#e5977c"/>
+          <rect x="5"  y="19" width="3" height="3" fill="#e5977c"/>
+          <rect x="11" y="19" width="3" height="3" fill="#e5977c"/>
+          <rect x="18" y="19" width="3" height="3" fill="#e5977c"/>
+          <rect x="24" y="19" width="3" height="3" fill="#e5977c"/>
+
+          <g class="outfit o-maid">
+            <rect x="3" y="14.5" width="26" height="5" fill="#2b2420"/>
+            <rect x="1.5" y="17.5" width="29" height="2" fill="#2b2420"/>
+            <rect x="1.5"  y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="6.5"  y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="11.5" y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="16.5" y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="21.5" y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="26.5" y="19.5" width="4" height="1" fill="#2b2420"/>
+            <rect x="11" y="5" width="10" height="9.5" fill="#fbf7ef"/>
+            <rect x="10" y="15.5" width="12" height="4.5" fill="#fbf7ef"/>
+            <rect x="12" y="18.5" width="8" height="0.5" fill="#e3d9c9"/>
+            <rect x="9" y="5" width="14" height="1.5" fill="#fbf7ef"/>
+            <rect x="12" y="7.25" width="3" height="2.5" fill="#2b2420"/>
+            <rect x="17" y="7.25" width="3" height="2.5" fill="#2b2420"/>
+            <rect x="15" y="6.75" width="2" height="3.5" fill="#2b2420"/>
+            <rect x="4" y="3.5" width="24" height="2" fill="#fbf7ef"/>
+            <rect x="4"  y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="8"  y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="12" y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="16" y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="20" y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="24" y="2.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="21" y="3" width="3" height="2" fill="#e88ca8"/>
+            <rect x="19.5" y="3.5" width="1.5" height="1.5" fill="#e88ca8"/>
+            <rect x="24" y="3.5" width="1.5" height="1.5" fill="#e88ca8"/>
+            <rect x="0"  y="12" width="3" height="2.5" fill="#fbf7ef"/>
+            <rect x="29" y="12" width="3" height="2.5" fill="#fbf7ef"/>
+          </g>
+
+          <g class="outfit o-butler">
+            <rect x="3" y="14.5" width="26" height="5" fill="#2f3a4f"/>
+            <rect x="11" y="5" width="10" height="9.5" fill="#fbf7ef"/>
+            <rect x="9" y="5" width="14" height="1.5" fill="#fbf7ef"/>
+            <rect x="15.75" y="10" width="0.5" height="4.5" fill="#d8d2c6"/>
+            <rect x="12" y="7.25" width="3" height="2.5" fill="#b8403f"/>
+            <rect x="17" y="7.25" width="3" height="2.5" fill="#b8403f"/>
+            <rect x="15" y="6.75" width="2" height="3.5" fill="#8f2f2f"/>
+            <rect x="3" y="14" width="26" height="0.5" fill="#232c3d"/>
+            <rect x="24" y="16" width="2" height="1.5" fill="#b8403f"/>
+            <rect x="0"  y="11" width="3" height="3" fill="#fbf7ef"/>
+            <rect x="29" y="11" width="3" height="3" fill="#fbf7ef"/>
+          </g>
+
+          <g class="outfit o-sailor">
+            <rect x="3" y="14.5" width="26" height="5" fill="#fbf7ef"/>
+            <rect x="1.5" y="17.5" width="29" height="2" fill="#3f5f8f"/>
+            <rect x="5"  y="17.5" width="1" height="2" fill="#32507a"/>
+            <rect x="10" y="17.5" width="1" height="2" fill="#32507a"/>
+            <rect x="15" y="17.5" width="1" height="2" fill="#32507a"/>
+            <rect x="20" y="17.5" width="1" height="2" fill="#32507a"/>
+            <rect x="25" y="17.5" width="1" height="2" fill="#32507a"/>
+            <rect x="5" y="5" width="22" height="3.5" fill="#3f5f8f"/>
+            <rect x="5" y="7" width="22" height="0.5" fill="#fbf7ef"/>
+            <rect x="5" y="8.5" width="2.5" height="2.5" fill="#3f5f8f"/>
+            <rect x="24.5" y="8.5" width="2.5" height="2.5" fill="#3f5f8f"/>
+            <rect x="13.5" y="8.5" width="5" height="1.5" fill="#d9534f"/>
+            <rect x="15" y="10" width="2" height="4.5" fill="#d9534f"/>
+            <rect x="0"  y="12" width="3" height="2.5" fill="#fbf7ef"/>
+            <rect x="29" y="12" width="3" height="2.5" fill="#fbf7ef"/>
+          </g>
+
+          <g class="outfit o-school">
+            <rect x="1.5" y="17.5" width="29" height="2.5" fill="#2b3a5c"/>
+            <rect x="5"  y="17.5" width="1" height="2.5" fill="#1e2942"/>
+            <rect x="10" y="17.5" width="1" height="2.5" fill="#1e2942"/>
+            <rect x="15" y="17.5" width="1" height="2.5" fill="#1e2942"/>
+            <rect x="20" y="17.5" width="1" height="2.5" fill="#1e2942"/>
+            <rect x="25" y="17.5" width="1" height="2.5" fill="#1e2942"/>
+            <rect x="3" y="14.5" width="26" height="5" fill="#fbf7ef"/>
+            <rect x="3" y="14" width="26" height="0.5" fill="#b8403f"/>
+            <rect x="9" y="5" width="14" height="1.5" fill="#fbf7ef"/>
+            <rect x="5" y="5" width="4.5" height="3" fill="#fbf7ef"/>
+            <rect x="22.5" y="5" width="4.5" height="3" fill="#fbf7ef"/>
+            <rect x="13" y="7" width="3" height="2" fill="#b8403f"/>
+            <rect x="17" y="7" width="3" height="2" fill="#b8403f"/>
+            <rect x="15.25" y="6.75" width="1.5" height="2.5" fill="#9c3332"/>
+            <rect x="15.5" y="9.5" width="1" height="3.5" fill="#b8403f"/>
+            <rect x="4" y="3.5" width="24" height="1.5" fill="#e5ded2"/>
+            <rect x="19.5" y="2.5" width="3.5" height="2.5" fill="#b8403f"/>
+            <rect x="17.5" y="3.25" width="2" height="1" fill="#b8403f"/>
+            <rect x="23" y="3.25" width="2" height="1" fill="#b8403f"/>
+            <rect x="0"  y="12" width="3" height="2.5" fill="#fbf7ef"/>
+            <rect x="29" y="12" width="3" height="2.5" fill="#fbf7ef"/>
+          </g>
+
+          <g class="outfit o-gym">
+            <rect x="3" y="17.5" width="26" height="2.5" fill="#2b3a5c"/>
+            <rect x="3" y="14.5" width="26" height="3.5" fill="#c9453f"/>
+            <rect x="15.5" y="14.5" width="1" height="3.5" fill="#fbf7ef"/>
+            <rect x="9" y="5" width="14" height="1.5" fill="#fbf7ef"/>
+            <rect x="0"  y="13" width="3" height="1.5" fill="#fbf7ef"/>
+            <rect x="29" y="13" width="3" height="1.5" fill="#fbf7ef"/>
+            <rect x="21" y="15" width="4" height="2.5" fill="#fbf7ef"/>
+            <rect x="22.5" y="15.5" width="1" height="1.5" fill="#c9453f"/>
+            <rect x="4" y="4" width="24" height="2" fill="#fbf7ef"/>
+            <rect x="4" y="4.5" width="24" height="1" fill="#c9453f"/>
+            <rect x="26" y="6" width="1.5" height="4" fill="#fbf7ef"/>
+            <rect x="26" y="7.5" width="1.5" height="1" fill="#c9453f"/>
+          </g>
+
+          <g class="outfit o-yukata">
+            <rect x="1.5" y="17.5" width="29" height="2.5" fill="#3b4b7a"/>
+            <rect x="3" y="14.5" width="26" height="4" fill="#3b4b7a"/>
+            <rect x="3" y="16" width="26" height="1.5" fill="#f2e6cf"/>
+            <rect x="3" y="17.4" width="26" height="0.5" fill="#cbb995"/>
+            <rect x="9" y="5" width="14" height="1.5" fill="#f2e6cf"/>
+            <rect x="13" y="6.5" width="6" height="2" fill="#f2e6cf"/>
+            <rect x="14.5" y="8.5" width="3" height="2" fill="#f2e6cf"/>
+            <rect x="6" y="15" width="1" height="1" fill="#fbf7ef"/>
+            <rect x="5" y="15.5" width="3" height="1" fill="#fbf7ef"/>
+            <rect x="24" y="15" width="1" height="1" fill="#fbf7ef"/>
+            <rect x="23" y="15.5" width="3" height="1" fill="#fbf7ef"/>
+            <rect x="9" y="18.5" width="1" height="1" fill="#fbf7ef"/>
+            <rect x="21" y="18.5" width="1" height="1" fill="#fbf7ef"/>
+            <rect x="21" y="2.5" width="3" height="3" fill="#ffd0e0"/>
+            <rect x="19.5" y="3.5" width="6" height="1" fill="#ffd0e0"/>
+            <rect x="22" y="2" width="1" height="4" fill="#ffd0e0"/>
+          </g>
+
+          <g class="outfit o-santa">
+            <rect x="3" y="14.5" width="26" height="5" fill="#b8312f"/>
+            <rect x="3" y="16" width="26" height="1.5" fill="#2b2420"/>
+            <rect x="14.5" y="15.5" width="3" height="2.5" fill="#e8c14b"/>
+            <rect x="1.5" y="17.5" width="29" height="3" fill="#fbf7ef"/>
+            <rect x="6" y="5" width="20" height="3" fill="#fbf7ef"/>
+            <rect x="6" y="4.5" width="20" height="1.5" fill="#fbf7ef"/>
+            <rect x="7" y="2" width="18" height="2.5" fill="#b8312f"/>
+            <rect x="18" y="0.5" width="8" height="1.5" fill="#b8312f"/>
+            <rect x="24.5" y="0" width="3.5" height="3" fill="#fbf7ef"/>
+          </g>
+
+          <g class="outfit o-witch">
+            <rect x="3" y="14.5" width="26" height="5" fill="#6a4f9e"/>
+            <rect x="1.5" y="17.5" width="29" height="2.5" fill="#6a4f9e"/>
+            <rect x="3" y="14.5" width="26" height="0.75" fill="#e8c14b"/>
+            <rect x="9" y="14.5" width="14" height="3" fill="#4a3670"/>
+            <rect x="8" y="4.5" width="16" height="1.5" fill="#4a3670"/>
+            <rect x="10"   y="3"   width="12" height="1.5" fill="#6a4f9e"/>
+            <rect x="11.5" y="1.5" width="9"  height="1.5" fill="#6a4f9e"/>
+            <rect x="13"   y="0"   width="6"  height="1.5" fill="#6a4f9e"/>
+            <rect x="10" y="4" width="12" height="0.5" fill="#e8c14b"/>
+            <rect x="14.5" y="1.5" width="1" height="1" fill="#f2d24b"/>
+            <rect x="16.5" y="2.5" width="1" height="1" fill="#f2d24b"/>
+          </g>
+
+          <g class="outfit o-pajama">
+            <rect x="3" y="14.5" width="26" height="5" fill="#cfe3ef"/>
+            <rect x="2" y="17.5" width="28" height="2" fill="#cfe3ef"/>
+            <rect x="3" y="15.5" width="26" height="1" fill="#a9cddf"/>
+            <rect x="3" y="17.5" width="26" height="1" fill="#a9cddf"/>
+            <rect x="8"  y="16.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="21" y="16.5" width="2" height="1" fill="#fbf7ef"/>
+            <rect x="5" y="2.5" width="22" height="2.5" fill="#cfe3ef"/>
+            <rect x="9" y="5" width="14" height="1" fill="#cfe3ef"/>
+            <rect x="25" y="1.5" width="5" height="1.5" fill="#cfe3ef"/>
+            <rect x="27.5" y="0" width="3.5" height="3.5" fill="#fbf7ef"/>
+          </g>
+
+          <g class="acc a-duster">
+            <rect x="29.5" y="4" width="1" height="7" fill="#c99a6a"/>
+            <rect x="26.5" y="1" width="5" height="3.5" fill="#fbf7ef"/>
+            <rect x="25.5" y="2" width="1.5" height="1.5" fill="#fbf7ef"/>
+            <rect x="31" y="2" width="0.75" height="1.5" fill="#fbf7ef"/>
+          </g>
+
+          <rect class="cheek" x="4.5" y="11.5" width="2.5" height="1.5" fill="#ff8fa8"/>
+          <rect class="cheek" x="25"  y="11.5" width="2.5" height="1.5" fill="#ff8fa8"/>
+
+          <rect class="eye" x="8"  y="10" width="2" height="4" fill="#1a1a1a"/>
+          <rect class="eye" x="22" y="10" width="2" height="4" fill="#1a1a1a"/>
+          <rect class="brow brow-l" x="6"  y="8" width="5" height="1.5" fill="#8a4a34"/>
+          <rect class="brow brow-r" x="21" y="8" width="5" height="1.5" fill="#8a4a34"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <div id="bubble"></div>
+
+  <div id="toast" class="hide">
+    <div id="toast-title">亲 密 等 级 提 升</div>
+    <div id="toast-body"></div>
+  </div>
+
+  <section id="sheet">
+    <div class="sheet-inner">
+      <div class="sheet-head">
+        <span class="t">小 屋</span>
+        <button id="btn-close-sheet" class="mini">关闭</button>
+      </div>
+
+      <div class="wtitle" id="sec-install">装 到 桌 面(推荐)</div>
+      <button id="btn-install" class="mini wide accent">📲 安装成独立 App</button>
+      <p id="install-tip" class="tips" style="margin-top:8px"></p>
+
+      <div class="wtitle" id="sec-snack">零 食 盘 · 点一下就喂</div>
+      <div class="sgrid" id="wrow-snack"></div>
+
+      <div class="wtitle" id="sec-dress">服 装 (10 套)</div>
+      <div class="wgrid" id="wrow-outfit"></div>
+
+      <div class="wtitle">手 上 拿 的</div>
+      <div class="wgrid" id="wrow-prop"></div>
+
+      <div class="wtitle">存 档 · 换手机用</div>
+      <textarea id="save-code" spellcheck="false" autocomplete="off"></textarea>
+      <div class="save-row">
+        <button id="btn-copy-save" class="mini">复制存档码</button>
+        <button id="btn-import-save" class="mini">导入框里的码</button>
+        <button id="btn-reset" class="mini danger">清空重来</button>
+      </div>
+
+      <div class="wtitle">玩 法</div>
+      <p class="tips">
+        · 点它 = 跳一下,连点两下 = 比心<br>
+        · 点空白地面 = 让它走过去 · 😘 = 亲它<br>
+        · 喂零食涨好感最快,每样都有冷却<br>
+        · 好感越高,它说话越黏、亲亲的反应越主动…<br>
+        · 左上角会记着「认识你的第几天」<br>
+        · 升级解锁隐藏动作,满 Lv.7 它会跟着你走
+      </p>
+    </div>
+  </section>
+
+  <footer id="panel">
+    <div class="wrap">
+      <div class="chips" id="row-secret"></div>
+      <div class="acts" id="row-main">
+        <button id="btn-feed"   class="act"><span class="ico">🍪</span><span class="lbl">零食</span></button>
+        <button id="btn-jump"   class="act"><span class="ico">🐾</span><span class="lbl">跳跳</span></button>
+        <button id="btn-wiggle" class="act"><span class="ico">✨</span><span class="lbl">开心</span></button>
+        <button id="btn-kiss"   class="act"><span class="ico">😘</span><span class="lbl">亲亲</span></button>
+        <button id="btn-sleep"  class="act"><span class="ico">😴</span><span class="lbl">打盹</span></button>
+        <button id="btn-love"   class="act"><span class="ico">💗</span><span class="lbl">摸摸</span></button>
+        <button id="btn-angry"  class="act"><span class="ico">🔥</span><span class="lbl">生气</span></button>
+        <button id="btn-type"   class="act"><span class="ico">⌨️</span><span class="lbl">代码</span></button>
+      </div>
+    </div>
+  </footer>
+
+  <div id="hint">点它跳一跳 · 连点两下比心 · 😘 亲它一下试试</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const $id = (s) => document.getElementById(s);
+const stage     = $id('stage');
+const pet       = $id('pet');
+const eyes      = [...pet.querySelectorAll('.eye')];
+const bubble    = $id('bubble');
+const hud       = $id('hud');
+const hudLove   = $id('hud-love');
+const hudLv     = $id('hud-lv');
+const hudNext   = $id('hud-next');
+const barFill   = $id('bar-fill');
+const toast     = $id('toast');
+const toastBody = $id('toast-body');
+const typeBtn   = $id('btn-type');
+const feedBtn   = $id('btn-feed');
+const kissBtn   = $id('btn-kiss');
+const sheet     = $id('sheet');
+const btnWard   = $id('btn-wardrobe');
+const hint      = $id('hint');
+const saveBox   = $id('save-code');
+
+const LEVELS = [
+  { lv:1, at:0,   title:'陌生',     note:'才刚刚认识',       say:'……(偷偷看你)' },
+  { lv:2, at:12,  title:'熟悉',     note:'解锁「转圈圈」',   say:'你…你人还不错嘛' },
+  { lv:3, at:30,  title:'亲近',     note:'解锁「撒娇蹭蹭」', say:'我今天一直在等你来' },
+  { lv:4, at:60,  title:'好朋友',   note:'解锁「要抱抱」',   say:'我好像有点喜欢和你待着' },
+  { lv:5, at:100, title:'亲密',     note:'解锁「跳支舞」',   say:'你摸摸我的时候,我会很开心' },
+  { lv:6, at:150, title:'挚友',     note:'解锁「放烟花」',   say:'有你在,做什么都不无聊' },
+  { lv:7, at:220, title:'心意相通', note:'解锁「跟着我走」', say:'以后…也要一直在一起哦 ♥' },
+];
+
+const LINES = {
+  jump: [
+    ['嘿咻!', '跳一下~', '哼'],
+    ['看我看我~', '我跳得高不高?'],
+    ['接住我~!', '这是为你跳的哦 ♥'],
+  ],
+  love: [
+    ['唔…?', '你干嘛…', '……(被摸头)'],
+    ['嘿嘿…', '再摸摸~', '好舒服…'],
+    ['最喜欢你了 ♥', '不要停嘛…', '只有你能摸哦'],
+  ],
+  angry: [
+    ['哼!', '别戳我啦', '…讨厌'],
+    ['生气了!', '哄我一下嘛'],
+    ['…其实没有真的生气', '你再这样我真不理你了哦'],
+  ],
+  typing: [
+    ['写代码中…', '别打扰…', 'bug 退散!'],
+    ['我在很努力哦', '让我编译一下…'],
+    ['我写完了你会夸我吗?', '为了你…不对,为了项目!', '为你……不是，为了Anthropic！'],
+  ],
+  sleep: [
+    ['Zzz…', '困了…'],
+    ['我睡一会儿…', '别走开…'],
+    ['你在这里我才睡得着…', '晚安…♥'],
+  ],
+  idle: [
+    ['你在忙什么?', '……', '陪我玩会儿嘛'],
+    ['今天也要加油哦', '我就在这儿', '你累不累?'],
+    ['有你在真好', '我会一直陪着你的', '……(偷偷看你)', '要记得天天来看我哦～'],
+  ],
+};
+
+const KISS = {
+  first: { cls:'kissfreeze blush', dur:1800, pts:5, cd:5000, hearts:3,
+           lines:['……这是第一次有人亲我', '……(愣住了好久)', '…原来被亲是这种感觉'] },
+  shy:   { cls:'kissshy blush',   dur:1200, pts:2, cd:6000, hearts:1,
+           lines:['诶?!…你、你干嘛啦', '唔…突然这样…', '(脸红着退了一步)', '别、别乱亲啦…'] },
+  happy: { cls:'kisshappy blush', dur:1500, pts:4, cd:5000, hearts:2,
+           lines:['…唔,好痒', '怎么突然…不过还行', '再来一次也不是不行'] },
+  deep:  { cls:'kisshappy blush', dur:1800, pts:6, cd:5000, hearts:4,
+           lines:['嗯…♥', '再亲一下也可以哦', '我喜欢这样…', '…只准亲我一个', '用力点嘛～'] },
+};
+
+const SNACKS = [
+  { id:'cookie', ico:'🍪', name:'小饼干',   pts:12, cd:12000, cls:'eat',
+    line:['唔…好吃!', '还要还要!', '你喂的都好吃 ♥'],
+    crumbs:['#e0a860','#c98b45','#f0c48a'], hearts:2 },
+  { id:'candy',  ico:'🍬', name:'水果糖',   pts:8,  cd:9000,  cls:'eat',
+    line:['甜甜的~', '再来一颗嘛', '我快要得蛀牙了'],
+    crumbs:['#ffb3d1','#ffd6e6','#fbf7ef'], hearts:2 },
+  { id:'tea',    ico:'🍵', name:'热茶',     pts:5,  cd:6000,  cls:'sip',
+    line:['呼…好暖和', '和你一样暖暖的…', '这样慢慢喝也好'],
+    steam:true, hearts:1 },
+  { id:'cake',   ico:'🍰', name:'草莓蛋糕', pts:25, cd:45000, cls:'eat',
+    line:['蛋、蛋糕…!', '这是我最喜欢的…', '今天是什么好日子吗?'],
+    crumbs:['#ffd0e0','#ff8fb8','#fbf7ef'], hearts:4, big:true },
+];
+
+const SECRETS = [
+  { id:'spin',     name:'转圈圈',   lv:2, cls:'spin',     dur:1150, line:'转圈圈~' },
+  { id:'nuzzle',   name:'撒娇蹭蹭', lv:3, cls:'nuzzle',   dur:1450, line:'蹭蹭…' },
+  { id:'hug',      name:'要抱抱',   lv:4, cls:'hug',      dur:1650, line:'抱一个!' },
+  { id:'dance',    name:'跳支舞',   lv:5, cls:'dance',    dur:3450, line:'♪ 啦啦啦 ♫' },
+  { id:'firework', name:'放烟花',   lv:6, cls:'firework', dur:2500, line:'看!烟花!' },
+  { id:'follow',   name:'跟着我',   lv:7, toggle:true,    line:'我跟着你~' },
+];
+const OUTFITS = [
+  { id:'none',   name:'原版',   c:'#e5977c' },
+  { id:'maid',   name:'女仆装', c:'#2b2420' },
+  { id:'butler', name:'管家装', c:'#2f3a4f' },
+  { id:'sailor', name:'水手服', c:'#3f5f8f' },
+  { id:'school', name:'校服',   c:'#2b3a5c' },
+  { id:'gym',    name:'运动服', c:'#c9453f' },
+  { id:'yukata', name:'浴衣',   c:'#3b4b7a' },
+  { id:'santa',  name:'圣诞装', c:'#b8312f' },
+  { id:'witch',  name:'魔女装', c:'#6a4f9e' },
+  { id:'pajama', name:'睡袍',   c:'#a9cddf' },
+];
+const PROPS = [
+  { id:'none',   name:'空手' },
+  { id:'duster', name:'鸡毛掸子' },
+];
+const REWARD = {
+  pet:    { pts:1, cd:2000 },
+  dress:  { pts:1, cd:8000 },
+  typing: { pts:1, cd:25000 },
+  sleep:  { pts:2, cd:25000 },
+  play:   { pts:1, cd:9000 },
+};
+
+const ONE_SHOT  = ['jump','wiggle','loved','angry','spin','nuzzle','hug','dance','firework',
+                   'eat','sip','kissshy','kisshappy','kissfreeze','blush'];
+const CODE_BITS = ['<>','{}','01','//','$_','=>','()',';'];
+const WALK_SPEED = 12;
+const BURST_COLORS = ['#f2d24b','#ff9ec4','#8fd6ff','#c3f7ae','#ffd9a0','#d6a8ff'];
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const IS_FILE = location.protocol === 'file:';
+
+/* ---------------- 存档 ---------------- */
+function readPref(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+function writePref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function readLove() { try { return Number(localStorage.getItem('pixel-pet-love')) || 0; } catch (e) { return 0; } }
+
+const S = {
+  offset: 0, face: 1, asleep: false, typing: false,
+  love: readLove(),
+  outfit: readPref('pixel-pet-outfit', 'none'),
+  prop:   readPref('pixel-pet-prop', 'none'),
+  followMe: false, cd: {}, t: {}, rafWalk: 0,
+};
+
+function levelIndexOf(v) { let i = 0; for (let k = 0; k < LEVELS.length; k++) if (v >= LEVELS[k].at) i = k; return i; }
+function levelAt(lv) { const t = LEVELS.find(x => x.lv === lv); return t ? t.at : 0; }
+function tierIndex() { const li = levelIndexOf(S.love); return li <= 1 ? 0 : li <= 3 ? 1 : 2; }
+
+function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+function clampOffset(v) {
+  const max = Math.max(40, window.innerWidth / 2 - (window.innerWidth < 400 ? 58 : 76));
+  return Math.max(-max, Math.min(max, v));
+}
+function applyPos() { pet.style.left = 'calc(50% + ' + S.offset.toFixed(1) + 'px)'; }
+function setFace(dir) { S.face = dir < 0 ? -1 : 1; pet.style.setProperty('--face', String(S.face)); }
+
+function say(text, ms = 1600) {
+  bubble.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(S.t.bubble);
+  S.t.bubble = setTimeout(() => bubble.classList.remove('show'), ms);
+}
+function sayRandom(key) {
+  const t = LINES[key];
+  if (!t) return;
+  const arr = t[Math.min(tierIndex(), t.length - 1)];
+  if (arr && arr.length) say(pick(arr));
+}
+
+function fx(text, kind = 'code') {
+  const el = document.createElement('div');
+  el.className = 'fx ' + kind;
+  el.textContent = text;
+  const r = pet.getBoundingClientRect();
+  el.style.left = (r.left + r.width / 2 + (Math.random() * 30 - 15)) + 'px';
+  el.style.top  = (r.top + 6) + 'px';
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 1450);
+}
+function burst(cx, cy, n = 8, big = false) {
+  const r = pet.getBoundingClientRect();
+  cx = cx == null ? r.left + r.width / 2 : cx;
+  cy = cy == null ? r.top + r.height / 2 : cy;
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('div');
+    d.className = 'burst' + (big ? ' big' : '');
+    const a = (Math.PI * 2 * i) / n + Math.random() * .4;
+    const dist = (big ? 36 : 26) + Math.random() * (big ? 44 : 24);
+    d.style.setProperty('--dx', (Math.cos(a) * dist).toFixed(0) + 'px');
+    d.style.setProperty('--dy', (Math.sin(a) * dist).toFixed(0) + 'px');
+    d.style.left = cx + 'px';
+    d.style.top  = cy + 'px';
+    d.style.background = BURST_COLORS[i % BURST_COLORS.length];
+    stage.appendChild(d);
+    setTimeout(() => d.remove(), big ? 1000 : 720);
+  }
+}
+function crumbs(cx, cy, colors) {
+  const cols = colors || ['#e0a860','#c98b45','#f0c48a'];
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'burst';
+    const a = Math.random() * Math.PI * 2;
+    const dist = 9 + Math.random() * 15;
+    d.style.setProperty('--dx', (Math.cos(a) * dist).toFixed(0) + 'px');
+    d.style.setProperty('--dy', (Math.sin(a) * dist + 10).toFixed(0) + 'px');
+    d.style.left = cx + 'px';
+    d.style.top  = cy + 'px';
+    d.style.background = cols[i % cols.length];
+    stage.appendChild(d);
+    setTimeout(() => d.remove(), 720);
+  }
+}
+function puffs(cx, cy) {
+  const d = document.createElement('div');
+  d.className = 'puff';
+  d.style.left = cx + 'px';
+  d.style.top  = cy + 'px';
+  stage.appendChild(d);
+  setTimeout(() => d.remove(), 1300);
+}
+
+function showGain(n) {
+  const el = document.createElement('div');
+  el.className = 'gainfx';
+  el.textContent = (n > 0 ? '+' : '') + n;
+  const r = hudLove.getBoundingClientRect();
+  el.style.left = (r.right + 8) + 'px';
+  el.style.top  = (r.top - 2) + 'px';
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+function updateHud() {
+  const i = levelIndexOf(S.love);
+  const cur = LEVELS[i], next = LEVELS[i + 1];
+  hudLove.textContent = S.love;
+  hudLv.textContent = 'Lv.' + cur.lv + ' ' + cur.title;
+  if (next) {
+    const p = (S.love - cur.at) / (next.at - cur.at);
+    barFill.style.width = Math.max(0, Math.min(1, p)) * 100 + '%';
+    hudNext.textContent = '距离 Lv.' + next.lv + '「' + next.title + '」还差 ' + (next.at - S.love);
+  } else {
+    barFill.style.width = '100%';
+    hudNext.textContent = '已经是心意相通了 ♥';
+  }
+}
+function gain(key, pts, cd) {
+  const r = REWARD[key] || { pts: 1, cd: 3000 };
+  const p = pts != null ? pts : r.pts;
+  const c = cd != null ? cd : r.cd;
+  const now = performance.now();
+  if (now - (S.cd[key] || 0) < c) return false;
+  S.cd[key] = now;
+  applyLove(p);
+  return true;
+}
+function applyLove(delta) {
+  const before = levelIndexOf(S.love);
+  S.love = Math.max(0, S.love + delta);
+  const after = levelIndexOf(S.love);
+  writePref('pixel-pet-love', String(S.love));
+  updateHud();
+  if (delta) showGain(delta);
+  if (after > before) onLevelUp(before, after);
+}
+function onLevelUp(before, after) {
+  if (S.asleep) wake();
+  refreshSecrets();
+  playSwap();
+  burst();
+  buzz(60);
+  for (let i = before + 1; i <= after; i++) queueToast(LEVELS[i]);
+  const top = LEVELS[after];
+  if (top) say(top.say, 3200);
+}
+const toastQueue = [];
+let toastBusy = false;
+function queueToast(level) { toastQueue.push(level); if (!toastBusy) nextToast(); }
+function nextToast() {
+  const lv = toastQueue.shift();
+  if (!lv) { toastBusy = false; return; }
+  toastBusy = true;
+  $id('toast-title').textContent = 'Lv.' + lv.lv + '  ' + lv.title;
+  toastBody.textContent = lv.note;
+  toast.classList.remove('hide');
+  burst();
+  setTimeout(() => {
+    toast.classList.add('hide');
+    setTimeout(nextToast, 320);
+  }, 2300);
+}
+
+function doKiss() {
+  if (S.typing) return say('它在敲代码,等它忙完嘛~');
+  if (S.asleep) { wake(); say('唔…?!', 1100); }
+
+  const first = !readPref('pixel-pet-kissed', '');
+  const tier  = tierIndex();
+  const k = first ? KISS.first : (tier === 0 ? KISS.shy : tier === 1 ? KISS.happy : KISS.deep);
+
+  const r = pet.getBoundingClientRect();
+  const faceX = r.left + r.width * 0.66;
+  const faceY = r.top + r.height * 0.46;
+  const kiss = document.createElement('div');
+  kiss.className = 'kissfly';
+  kiss.textContent = '💋';
+  kiss.style.left = faceX + 'px';
+  kiss.style.top  = faceY + 'px';
+  stage.appendChild(kiss);
+  setTimeout(() => kiss.remove(), 720);
+
+  clearTimeout(S.t.kiss);
+  S.t.kiss = setTimeout(() => {
+    oneShot(k.cls, k.dur, null);
+    say(pick(k.lines), 2400);
+    fx('啾~', 'kiss');
+    if (tier === 0 && !first) fx('💦', 'kiss');
+    for (let i = 0; i < k.hearts; i++) setTimeout(() => fx('♥', 'heart'), 120 + i * 200);
+    if (first || tier === 2) setTimeout(() => burst(faceX, faceY - 8, 10), 380);
+    buzz(first ? 55 : 26);
+
+    if (first) writePref('pixel-pet-kissed', '1');
+    gain('kiss', k.pts, k.cd);
+
+    clearTimeout(S.t.wander);
+    cancelAnimationFrame(S.rafWalk);
+    clearTimeout(S.t.kissBack);
+    S.t.kissBack = setTimeout(() => wander(700), k.dur + 500);
+  }, 360);
+}
+
+/* ---------------- 存档码 ---------------- */
+function buildSaveCode() {
+  return ['PET1', S.love, S.outfit, S.prop, readPref('pixel-pet-kissed', '') ? 1 : 0,
+          readPref('pixel-pet-first-day', '')].join('|');
+}
+function refreshSaveBox() { saveBox.value = buildSaveCode(); }
+function copySave() {
+  refreshSaveBox();
+  saveBox.focus();
+  saveBox.select();
+  if (saveBox.setSelectionRange) saveBox.setSelectionRange(0, 99999);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(saveBox.value).then(() => {}, () => {});
+    ok = true;
+  }
+  say(ok ? '复制好了,发到新手机上就行' : '复制失败,长按框里的字手动复制', 2400);
+}
+function importSave() {
+  const txt = (saveBox.value || '').trim();
+  if (!txt) { refreshSaveBox(); return say('框里还没有存档码呢,先粘贴进去', 2200); }
+  if (txt === buildSaveCode()) return say('这就是现在的存档呀', 1800);
+  const p = txt.split('|');
+  if (p[0] !== 'PET1' || p.length < 5) return say('这串码看不懂…再检查一下?', 2200);
+  const love = Math.max(0, Math.floor(Number(p[1]) || 0));
+  const outfit = OUTFITS.some(o => o.id === p[2]) ? p[2] : 'none';
+  const prop   = PROPS.some(x => x.id === p[3]) ? p[3] : 'none';
+  S.love = love;
+  writePref('pixel-pet-love', String(love));
+  writePref('pixel-pet-kissed', p[4] === '1' ? '1' : '');
+  if (p[5]) writePref('pixel-pet-first-day', p[5]);
+  setOutfit(outfit, true);
+  setProp(prop, true);
+  S.cd = {};
+  updateHud(); refreshSecrets(); refreshSaveBox();
+  playSwap(); burst(); buzz(30);
+  say('搬家搬好了,好久不见~', 2400);
+}
+function clearSave() {
+  if (!window.confirm('清空存档?亲密度、衣服、第一次亲亲的记忆、认识的天数都会归零。')) return;
+  S.love = 0; S.followMe = false; S.cd = {};
+  writePref('pixel-pet-love', '0');
+  writePref('pixel-pet-kissed', '');
+  writePref('pixel-pet-first-day', '');
+  setOutfit('none', true);
+  setProp('none', true);
+  updateHud(); refreshSecrets(); refreshSaveBox();
+  say('…那,我们重新认识一次吧', 2800);
+}
+
+/* ---------------- 零食盘 ---------------- */
+function buildSnacks() {
+  const grid = $id('wrow-snack');
+  SNACKS.forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'snack-btn';
+    b.dataset.id = s.id;
+    b.innerHTML =
+      '<span class="s-ico">' + s.ico + '</span>' +
+      '<span class="s-txt"><span>' + s.name + '</span>' +
+      '<span class="s-val">+ ' + s.pts + ' 好感</span></span>' +
+      '<span class="s-cd"></span>';
+    b.addEventListener('click', () => feedWith(s));
+    grid.appendChild(b);
+  });
+  refreshTray();
+}
+function snackLeft(s) {
+  return Math.ceil((s.cd - (performance.now() - (S.cd['snack:' + s.id] || 0))) / 1000);
+}
+function refreshTray() {
+  let anyCooling = false;
+  document.querySelectorAll('#wrow-snack .snack-btn').forEach(b => {
+    const s = SNACKS.find(x => x.id === b.dataset.id);
+    if (!s) return;
+    const left = snackLeft(s);
+    const cdEl = b.querySelector('.s-cd');
+    if (left > 0) {
+      anyCooling = true;
+      b.classList.add('cooling');
+      if (cdEl) cdEl.textContent = left + 's';
+    } else {
+      b.classList.remove('cooling');
+      if (cdEl) cdEl.textContent = '';
+    }
+  });
+  if (!anyCooling && S.t.tray) { clearInterval(S.t.tray); S.t.tray = null; }
+}
+function feedWith(s) {
+  if (S.asleep) { wake(); return; }
+  if (S.typing) { say('它在敲代码,先别喂~'); return; }
+
+  const left = snackLeft(s);
+  if (left > 0) { say('还有点饱,再等 ' + left + ' 秒~', 1300); return; }
+  S.cd['snack:' + s.id] = performance.now();
+
+  const r = pet.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const mouthY = r.top + r.height * 0.42;
+
+  const drop = document.createElement('div');
+  drop.className = 'snack';
+  drop.textContent = s.ico;
+  drop.style.left = cx + 'px';
+  drop.style.top  = (r.top + 2) + 'px';
+  stage.appendChild(drop);
+  setTimeout(() => drop.remove(), 660);
+
+  clearTimeout(S.t.feed);
+  S.t.feed = setTimeout(() => {
+    oneShot(s.cls, 1500, null);
+    say(pick(s.line), 1800);
+    if (s.steam) {
+      for (let i = 0; i < 3; i++) setTimeout(() => puffs(cx + (Math.random() * 24 - 12), mouthY - 6), i * 280);
+    } else {
+      for (let i = 0; i < 3; i++) setTimeout(() => crumbs(cx + (Math.random() * 30 - 15), mouthY, s.crumbs), i * 320);
+    }
+    const hn = s.hearts || 1;
+    for (let i = 0; i < hn; i++) setTimeout(() => fx('♥', 'heart'), 140 + i * 230);
+    if (s.big) setTimeout(() => burst(cx, mouthY, 12, true), 880);
+    setTimeout(() => { applyLove(s.pts); buzz(s.pts >= 20 ? 40 : 22); }, 950);
+  }, 560);
+
+  const ic = feedBtn.querySelector('.ico');
+  if (ic) ic.textContent = s.ico;
+  refreshTray();
+  clearInterval(S.t.tray);
+  S.t.tray = setInterval(refreshTray, 500);
+}
+
+/* ---------------- 隐藏动作 ---------------- */
+function buildSecrets() {
+  const row = $id('row-secret');
+  SECRETS.forEach(a => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.dataset.id = a.id;
+    b.addEventListener('click', () => onSecretClick(a));
+    row.appendChild(b);
+  });
+  refreshSecrets();
+}
+function refreshSecrets() {
+  const li = levelIndexOf(S.love);
+  document.querySelectorAll('#row-secret .chip').forEach(b => {
+    const a = SECRETS.find(x => x.id === b.dataset.id);
+    const ok = li >= levelIndexOf(levelAt(a.lv));
+    const wasLocked = b.classList.contains('locked');
+    if (ok) {
+      b.classList.remove('locked');
+      b.textContent = a.toggle ? (S.followMe ? '🐾 跟着我(开)' : '🐾 跟着我') : '✦ ' + a.name;
+      b.classList.toggle('on', !!a.toggle && S.followMe);
+      if (wasLocked) { b.classList.add('unlocked'); setTimeout(() => b.classList.remove('unlocked'), 600); }
+    } else {
+      b.classList.add('locked');
+      b.classList.remove('on');
+      b.textContent = '🔒 Lv.' + a.lv;
+    }
+  });
+}
+function onSecretClick(a) {
+  if (levelIndexOf(S.love) < levelIndexOf(levelAt(a.lv))) {
+    say('还没到解锁的时候哦(还差 ' + (levelAt(a.lv) - S.love) + ' 点)');
+    return;
+  }
+  if (S.asleep) return wake();
+  if (S.typing) return say('它在敲代码,先别打扰~');
+
+  if (a.toggle) {
+    S.followMe = !S.followMe;
+    refreshSecrets();
+    say(S.followMe ? '我跟着你走~' : '那我自己玩啦', 1500);
+    buzz(20);
+    if (S.followMe) { clearTimeout(S.t.wander); wander(300); }
+    return;
+  }
+
+  oneShot(a.cls, a.dur, null);
+  say(a.line, a.dur);
+  gain('play');
+
+  if (a.id === 'nuzzle') { fx('♥', 'heart'); setTimeout(() => fx('♥', 'heart'), 300); }
+  if (a.id === 'hug') {
+    fx('♥', 'heart');
+    setTimeout(() => fx('♥', 'heart'), 260);
+    setTimeout(() => fx('♥', 'heart'), 520);
+  }
+  if (a.id === 'dance') noteLoop(a.dur);
+  if (a.id === 'firework') fireworkShow();
+
+  clearTimeout(S.t.wander);
+  cancelAnimationFrame(S.rafWalk);
+  clearTimeout(S.t.secret);
+  S.t.secret = setTimeout(() => wander(500), a.dur + 100);
+}
+function noteLoop(ms) {
+  const notes = ['♪', '♫', '♬'];
+  clearInterval(S.t.note);
+  S.t.note = setInterval(() => fx(pick(notes), 'note'), 260);
+  setTimeout(() => clearInterval(S.t.note), ms);
+}
+function fireworkShow() {
+  const r = pet.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top;
+  for (let wave = 0; wave < 3; wave++) {
+    setTimeout(() => {
+      const ox = cx + (wave - 1) * 52 * (0.7 + Math.random() * 0.6);
+      const oy = cy - 26 - wave * 26 + Math.random() * 16;
+      burst(ox, oy, 14, true);
+    }, wave * 430);
+  }
+}
+
+/* ---------------- 换装 ---------------- */
+function markSelected() {
+  document.querySelectorAll('#wrow-outfit button').forEach(b => b.classList.toggle('sel', b.dataset.id === S.outfit));
+  document.querySelectorAll('#wrow-prop button').forEach(b => b.classList.toggle('sel', b.dataset.id === S.prop));
+}
+function setOutfit(id, silent) {
+  S.outfit = id;
+  pet.dataset.outfit = id;
+  writePref('pixel-pet-outfit', id);
+  markSelected();
+  if (!silent) {
+    playSwap(); burst();
+    say('换上' + (OUTFITS.find(o => o.id === id) || {}).name + '啦', 1500);
+    gain('dress');
+  }
+}
+function setProp(id, silent) {
+  S.prop = id;
+  pet.dataset.prop = id;
+  writePref('pixel-pet-prop', id);
+  markSelected();
+  if (!silent) {
+    playSwap(); burst();
+    say(id === 'duster' ? '掸子拿去!' : '放回去了', 1300);
+  }
+}
+function playSwap() {
+  pet.classList.remove('swap');
+  void pet.offsetWidth;
+  pet.classList.add('swap');
+  clearTimeout(S.t.swap);
+  S.t.swap = setTimeout(() => pet.classList.remove('swap'), 520);
+}
+function buildWardrobe() {
+  const rowO = $id('wrow-outfit');
+  OUTFITS.forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.id = o.id;
+    const sw = document.createElement('i');
+    sw.className = 'swatch';
+    sw.style.background = o.c;
+    b.appendChild(sw);
+    b.appendChild(document.createTextNode(o.name));
+    b.addEventListener('click', () => setOutfit(o.id));
+    rowO.appendChild(b);
+  });
+  const rowP = $id('wrow-prop');
+  PROPS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.id = p.id;
+    b.textContent = p.name;
+    b.addEventListener('click', () => setProp(p.id));
+    rowP.appendChild(b);
+  });
+}
+function openSheet(target) {
+  stage.classList.add('sheet-open');
+  sheet.classList.add('open');
+  btnWard.classList.add('on');
+  clearTimeout(S.t.wander);
+  cancelAnimationFrame(S.rafWalk);
+  refreshTray();
+  refreshSaveBox();
+  paintInstall();
+  setTimeout(() => {
+    const sec = $id(target === 'dress' ? 'sec-dress' : target === 'install' ? 'sec-install' : 'sec-snack');
+    if (sec) sheet.scrollTop = Math.max(0, sec.offsetTop - 8);
+  }, 60);
+}
+function closeSheet() {
+  stage.classList.remove('sheet-open');
+  sheet.classList.remove('open');
+  btnWard.classList.remove('on');
+  clearInterval(S.t.tray);
+  S.t.tray = null;
+  wander(600);
+}
+
+/* ---------------- 基础动作 ---------------- */
+function oneShot(cls, ms, lineKey) {
+  ONE_SHOT.forEach(c => pet.classList.remove(c));
+  void pet.offsetWidth;
+  cls.split(' ').forEach(c => pet.classList.add(c));
+  clearTimeout(S.t.action);
+  S.t.action = setTimeout(() => cls.split(' ').forEach(c => pet.classList.remove(c)), ms);
+  if (lineKey) sayRandom(lineKey);
+}
+function doJump() {
+  if (S.asleep || S.typing) return;
+  oneShot('jump', 420, Math.random() < .4 ? 'jump' : null);
+}
+function doWiggle() {
+  if (S.asleep || S.typing) return;
+  oneShot('wiggle', 540, 'jump');
+}
+function doLove() {
+  if (S.asleep) return wake();
+  if (S.typing) return;
+  oneShot('loved wiggle', 900, 'love');
+  fx('♥', 'heart');
+  gain('pet');
+  buzz(12);
+}
+function doAngry() {
+  if (S.asleep || S.typing) return;
+  oneShot('angry', 1000, 'angry');
+  fx('💢', 'rage');
+  applyLove(-1);
+  buzz(20);
+}
+
+/* ---------------- 打盹 ---------------- */
+function toggleSleep() {
+  if (S.typing) stopTyping();
+  if (S.asleep) return wake();
+  S.asleep = true;
+  cancelAnimationFrame(S.rafWalk);
+  clearTimeout(S.t.wander);
+  pet.classList.add('sleep');
+  if (S.outfit !== 'pajama') sayRandom('sleep');
+  fx('Zzz', 'zzz');
+  S.t.zzz  = setInterval(() => { if (S.asleep) fx('Zzz', 'zzz'); }, 1000);
+  S.t.wake = setTimeout(() => {
+    if (!S.asleep) return;
+    S.asleep = false;
+    clearInterval(S.t.zzz);
+    pet.classList.remove('sleep');
+    gain('sleep');
+    sayRandom('sleep');
+    wander(600);
+  }, 6500);
+}
+function wake() {
+  if (!S.asleep) return;
+  S.asleep = false;
+  clearInterval(S.t.zzz);
+  clearTimeout(S.t.wake);
+  pet.classList.remove('sleep');
+  wander(600);
+}
+
+/* ---------------- 敲代码 ---------------- */
+function toggleTyping() {
+  if (S.asleep) return wake();
+  if (S.typing) stopTyping(); else startTyping();
+}
+function startTyping() {
+  if (S.asleep || S.typing) return;
+  S.typing = true;
+  cancelAnimationFrame(S.rafWalk);
+  clearTimeout(S.t.wander);
+  pet.classList.add('typing');
+  typeBtn.classList.add('on');
+  sayRandom('typing');
+  S.t.type = setInterval(() => {
+    fx(pick(CODE_BITS), 'code');
+    gain('typing');
+  }, 420);
+}
+function stopTyping() {
+  if (!S.typing) return;
+  S.typing = false;
+  clearInterval(S.t.type);
+  pet.classList.remove('typing');
+  typeBtn.classList.remove('on');
+  wander(700);
+}
+
+/* ---------------- 走路 / 跟随 ---------------- */
+function wander(delay) {
+  clearTimeout(S.t.wander);
+  if (S.asleep || S.typing) return;
+  let d = delay != null ? delay : 900 + Math.random() * 2200;
+  if (S.followMe && pointerReady) d = 420;
+  S.t.wander = setTimeout(walkOnce, d);
+}
+function walkTo(target, onDone) {
+  const from = S.offset;
+  const delta = target - from;
+  if (Math.abs(delta) < 4) { if (onDone) onDone(); return; }
+  setFace(delta);
+  const dur = Math.abs(delta) * WALK_SPEED + 380;
+  const t0 = performance.now();
+  cancelAnimationFrame(S.rafWalk);
+  const step = (now) => {
+    if (S.asleep || S.typing) return;
+    const t = Math.min(1, (now - t0) / dur);
+    S.offset = from + delta * t;
+    applyPos();
+    if (t < 1) S.rafWalk = requestAnimationFrame(step);
+    else if (onDone) onDone();
+  };
+  S.rafWalk = requestAnimationFrame(step);
+}
+function followTarget() {
+  const px = clampOffset(pointer.x - window.innerWidth / 2);
+  return clampOffset(S.offset <= px ? px - 36 : px + 36);
+}
+function walkOnce() {
+  if (S.asleep || S.typing) return;
+  if (S.followMe && pointerReady) {
+    const target = followTarget();
+    if (Math.abs(target - S.offset) < 18) return wander(420);
+    walkTo(target, () => wander(420));
+  } else {
+    const span = Math.min(window.innerWidth * 0.6, 560);
+    walkTo(clampOffset((Math.random() - 0.5) * span), () => wander());
+  }
+}
+
+/* ---------------- 眨眼 ---------------- */
+function blinkLoop() {
+  S.t.blink = setTimeout(() => {
+    if (!S.asleep) {
+      pet.classList.add('blink');
+      setTimeout(() => pet.classList.remove('blink'), 130);
+    }
+    blinkLoop();
+  }, 1800 + Math.random() * 3200);
+}
+
+/* ---------------- 视线 + 气泡 ---------------- */
+const pointer = { x: window.innerWidth / 2, y: window.innerHeight * 0.4 };
+let pointerReady = false;
+function pointAt(x, y) { pointer.x = x; pointer.y = y; pointerReady = true; }
+window.addEventListener('pointermove', (e) => { pointAt(e.clientX, e.clientY); }, { passive: true });
+
+function followLoop() {
+  const r  = pet.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height * 0.45;
+  const dx = pointer.x - cx, dy = pointer.y - cy;
+  const len = Math.hypot(dx, dy) || 1;
+  const k   = Math.min(1, len / 130);
+  const ex = (dx / len) * k * 1.6 * S.face;
+  const ey = (dy / len) * k * 1.1;
+  for (const el of eyes) {
+    el.style.setProperty('--ex', ex.toFixed(2) + 'px');
+    el.style.setProperty('--ey', ey.toFixed(2) + 'px');
+  }
+  bubble.style.left = cx + 'px';
+  bubble.style.top  = (r.top - 8) + 'px';
+  S.t.follow = setTimeout(followLoop, 70);
+}
+
+/* ---------------- 交互 ---------------- */
+let pendingTap = 0, lastTapAt = 0;
+pet.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  pointAt(e.clientX, e.clientY);
+  const now = performance.now();
+  if (now - lastTapAt < 320) {
+    clearTimeout(pendingTap); pendingTap = 0; lastTapAt = 0;
+    doLove();
+  } else {
+    lastTapAt = now;
+    clearTimeout(pendingTap);
+    pendingTap = setTimeout(() => { pendingTap = 0; lastTapAt = 0; doJump(); }, 300);
+  }
+});
+stage.addEventListener('pointerdown', (e) => {
+  const t = e.target;
+  if (t.closest('button') || t.closest('#topbar') || t.closest('#sheet')) return;
+  if (t === pet || pet.contains(t)) return;
+  if (sheet.classList.contains('open')) { closeSheet(); return; }
+  pointAt(e.clientX, e.clientY);
+  if (S.asleep || S.typing) return;
+  const want = clampOffset(e.clientX - window.innerWidth / 2);
+  clearTimeout(S.t.wander);
+  cancelAnimationFrame(S.rafWalk);
+  walkTo(want, () => wander(900));
+});
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('#stage')) e.preventDefault();
+});
+
+/* ---------------- 按钮 ---------------- */
+feedBtn.addEventListener('click', () => openSheet('snack'));
+kissBtn.addEventListener('click', doKiss);
+$id('btn-jump').addEventListener('click', () => doJump());
+$id('btn-wiggle').addEventListener('click', () => doWiggle());
+$id('btn-sleep').addEventListener('click', () => toggleSleep());
+$id('btn-love').addEventListener('click', () => doLove());
+$id('btn-angry').addEventListener('click', () => doAngry());
+typeBtn.addEventListener('click', () => toggleTyping());
+btnWard.addEventListener('click', () => sheet.classList.contains('open') ? closeSheet() : openSheet('dress'));
+$id('btn-close-sheet').addEventListener('click', closeSheet);
+$id('btn-copy-save').addEventListener('click', copySave);
+$id('btn-import-save').addEventListener('click', importSave);
+$id('btn-reset').addEventListener('click', clearSave);
+
+/* ---------------- 键盘 ---------------- */
+document.addEventListener('keydown', (e) => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key === ' ' ? ' ' : e.key.toLowerCase();
+  if ((k >= '1' && k <= '9') || k === '0') {
+    const o = OUTFITS[k === '0' ? 9 : Number(k) - 1];
+    if (o) { e.preventDefault(); setOutfit(o.id); }
+    return;
+  }
+  if (k === 'p') { e.preventDefault(); setProp(S.prop === 'duster' ? 'none' : 'duster'); return; }
+  const KEYS = {
+    ' ': () => doJump(), f: () => openSheet('snack'), k: () => doKiss(),
+    l: () => doLove(), w: () => doWiggle(), a: () => doAngry(),
+    s: () => toggleSleep(), t: () => toggleTyping(),
+    c: () => sheet.classList.contains('open') ? closeSheet() : openSheet('dress'),
+  };
+  const fn = KEYS[k];
+  if (!fn) return;
+  e.preventDefault();
+  fn();
+});
+
+/* ---------------- 自言自语 ---------------- */
+function idleTalk() {
+  S.t.talk = setTimeout(() => {
+    if (!S.asleep && !S.typing && !sheet.classList.contains('open')) {
+      if (levelIndexOf(S.love) >= 3 && Math.random() < .35) fx('♥', 'heart');
+      else if (Math.random() < .7) sayRandom('idle');
+    }
+    idleTalk();
+  }, 20000 + Math.random() * 15000);
+}
+
+/* ---------------- 背景星星 ---------------- */
+[
+  { x: '6%',  y: '20%', s: 14, c: '#e8a23d' },
+  { x: '4%',  y: '58%', s: 8,  c: '#f2d24b' },
+  { x: '91%', y: '34%', s: 10, c: '#f6e58d' },
+  { x: '82%', y: '70%', s: 6,  c: '#9aa0ff' },
+  { x: '22%', y: '84%', s: 6,  c: '#6fe3c8' },
+].forEach(sp => {
+  const el = document.createElement('div');
+  el.className = 'sparkle';
+  el.style.left = sp.x;
+  el.style.top  = sp.y;
+  el.style.width = el.style.height = sp.s + 'px';
+  el.style.animationDelay = (Math.random() * 2).toFixed(2) + 's';
+  if (sp.s >= 10) {
+    el.innerHTML =
+      '<svg viewBox="0 0 16 16" width="' + sp.s + '" height="' + sp.s + '" shape-rendering="crispEdges">' +
+      '<rect x="6" y="0" width="4" height="16" fill="' + sp.c + '"/>' +
+      '<rect x="0" y="6" width="16" height="4" fill="' + sp.c + '"/></svg>';
+  } else {
+    el.style.background = sp.c;
+  }
+  stage.appendChild(el);
+});
+
+/* ================= PWA:图标 / 安装 / 离线 ================= */
+
+function paintIcon(ctx, size) {
+  const u = size / 32, s = 0.78, ox = 3.52, oy = 2.35;
+  const R = (x, y, w, h, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect((x * s + ox) * u, (y * s + oy) * u, w * s * u, h * s * u);
+  };
+  ctx.fillStyle = '#17171b';
+  ctx.fillRect(0, 0, size, size);
+  R(0, 13, 3, 5, '#e08e73'); R(29, 13, 3, 5, '#e08e73');
+  R(3, 8, 26, 16, '#e5977c');
+  R(5, 24, 3, 3, '#e5977c'); R(11, 24, 3, 3, '#e5977c');
+  R(18, 24, 3, 3, '#e5977c'); R(24, 24, 3, 3, '#e5977c');
+  R(8, 13, 3, 5, '#1a1a1a'); R(21, 13, 3, 5, '#1a1a1a');
+  R(4, 15.5, 2.5, 1.5, '#ff8fa8'); R(25.5, 15.5, 2.5, 1.5, '#ff8fa8');
+}
+function makeTouchIcon() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 180;
+    paintIcon(c.getContext('2d'), 180);
+    const url = c.toDataURL('image/png');
+    const add = (rel) => {
+      const l = document.createElement('link');
+      l.rel = rel; l.href = url;
+      if (rel === 'apple-touch-icon') l.sizes = '180x180';
+      document.head.appendChild(l);
+    };
+    add('apple-touch-icon');
+    add('icon');
+  } catch (e) {}
+}
+
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+let deferredPrompt = null;
+const installBtn = $id('btn-install');
+const installTip = $id('install-tip');
+
+function paintInstall() {
+  if (!installBtn || !installTip) return;
+  if (isStandalone()) {
+    installBtn.hidden = true;
+    installTip.classList.add('hl');
+    installTip.textContent = '已经装好了 ✅ 从桌面图标点开就是全屏,断网也能玩。';
+    return;
+  }
+  installBtn.hidden = false;
+  installTip.classList.remove('hl');
+
+  if (IS_FILE) {
+    installBtn.textContent = '📲 安装说明';
+    installTip.textContent = '本地文件装不了哦:先用「上传」把它放到网上,再打开那个网址就能装了。';
+    return;
+  }
+  if (deferredPrompt) {
+    installBtn.textContent = '📲 安装到桌面';
+    installTip.textContent = '装完是独立 App:没有地址栏、有自己的图标、断网也能开。';
+    return;
+  }
+  installBtn.textContent = isIOS() ? '📲 怎么装到主屏?' : '📲 安装到桌面';
+  installTip.textContent = isIOS()
+    ? 'iPhone:用 Safari 打开本页 → 点底部「分享」→ 往下滑找「添加到主屏幕」。'
+    : '浏览器菜单(⋮ / 分享)里选「安装应用」或「添加到主屏幕」。';
+}
+
+installBtn && installBtn.addEventListener('click', async () => {
+  if (isStandalone()) return;
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    try {
+      const r = await deferredPrompt.userChoice;
+      if (r && r.outcome === 'accepted') { deferredPrompt = null; paintInstall(); say('装好啦!以后从桌面点开就行', 3000); }
+      else say('那…想装的时候再点我哦', 2200);
+    } catch (e) {}
+    return;
+  }
+  say(isIOS() ? '看下面的说明:分享 → 添加到主屏幕' : '在浏览器菜单里找「安装应用」', 3200);
+  installTip.classList.add('hl');
+  setTimeout(() => installTip.classList.remove('hl'), 2600);
+});
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  paintInstall();
+});
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  paintInstall();
+  say('装好啦!以后从桌面点开就能玩 ♥', 3200);
+});
+
+if ('serviceWorker' in navigator && !IS_FILE) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(() => {
+        if (!readPref('pixel-pet-offline-told', '')) {
+          writePref('pixel-pet-offline-told', '1');
+          setTimeout(() => say('已经缓存好了,断网也能玩~', 2800), 2600);
+        }
+      })
+      .catch(() => {});
+  });
+}
+
+/* ---------------- 测试通道 ---------------- */
+hud.addEventListener('click', (e) => { if (e.shiftKey) { applyLove(50); say('(测试:+50)', 1200); } });
+
+/* ---------------- 切后台 ---------------- */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearTimeout(S.t.follow); clearTimeout(S.t.blink);
+    clearTimeout(S.t.talk);   clearTimeout(S.t.wander);
+    clearInterval(S.t.tray);  S.t.tray = null;
+    cancelAnimationFrame(S.rafWalk);
+  } else {
+    followLoop(); blinkLoop(); idleTalk(); wander(800);
+    if (sheet.classList.contains('open')) refreshTray();
+  }
+});
+
+window.addEventListener('resize', () => { S.offset = clampOffset(S.offset); applyPos(); });
+window.addEventListener('orientationchange', () => setTimeout(() => { S.offset = clampOffset(S.offset); applyPos(); }, 260));
+
+/* ---------------- 启动 ---------------- */
+makeTouchIcon();
+buildSnacks();
+buildWardrobe();
+buildSecrets();
+setOutfit(S.outfit, true);
+setProp(S.prop, true);
+setFace(1);
+applyPos();
+updateHud();
+refreshSaveBox();
+paintInstall();
+
+const urlLove = Number(new URLSearchParams(location.search).get('love'));
+if (Number.isFinite(urlLove) && urlLove > S.love) applyLove(urlLove - S.love);
+
+blinkLoop();
+followLoop();
+idleTalk();
+wander(1600);
+
+setTimeout(() => say('欢迎回来( ﹡ˆoˆ﹡ )', 3000), 900);
+setTimeout(() => hint.classList.add('gone'), 8000);
+
+})();
+</script>
+
+<script>
+/* 点一下屏幕就满屏(全屏) */
+(function () {
+  function goFull() {
+    var d = document, el = d.documentElement;
+    var fn = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!fn) return;
+    if (d.fullscreenElement || d.webkitFullscreenElement) return;
+    try { fn.call(el); } catch (e) {}
+  }
+  document.addEventListener('pointerdown', goFull, true);
+  document.addEventListener('click', goFull, true);
+})();
+</script>
+
+<script>
+/* ============ 它记得你走了多久 + 今天是认识你的第几天 ============ */
+(function () {
+  var K_SEEN = 'pixel-pet-last-seen', K_FIRST = 'pixel-pet-first-day', K_LOVE = 'pixel-pet-love';
+  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  /* 走了多久要说的话:六档时长 × 三档亲密度 */
+  var AWAY = [
+    { ms: 3 * 86400000, t: ['…你回来了啊。({g})', '{g}…我都快忘了你长什么样了', '你走了 {g}…我还以为你不要我了'] },
+    { ms: 86400000,     t: ['{g}不见。', '{g}…我一个人待了好久。', '{g}。你终于回来了…我一直在这儿等你'] },
+    { ms: 6 * 3600000,  t: ['{g}。', '你走了 {g},我打了个盹。', '你走了 {g}…好长啊。不过你回来就好 ♥'] },
+    { ms: 3600000,      t: ['你出去 {g} 了呀。', '等了你 {g}…', '你走了 {g}…我一直看着时间'] },
+    { ms: 5 * 60000,    t: ['{g}没见。', '{g}呀,你去忙了吧?', '{g}…我还以为你去别人那儿了'] },
+    { ms: 60000,        t: ['你回来啦。', '你回来啦~', '欢迎回来 ♥'] }
+  ];
+  /* 认识第几天要说的话 */
+  var DAY = {
+    d1:   ['今天是第 1 天…请多指教', '第 1 天。以后也请多关照', '第 1 天…你就是我的主人了吗'],
+    d2:   ['今天是第 2 天呢', '第 2 天~你还在', '第 2 天…昨天我还以为你不会再来'],
+    week: ['我们认识一周啦!', '满 7 天了…时间过得好快', '第 7 天 ♥ 已经习惯你在身边了'],
+    d30:  ['一个月了…!', '第 30 天。你陪我好久', '整整一个月…以后还有好多个月'],
+    d100: ['第 100 天!', '100 天了…我们一起走过好多', '第 100 天 ♥ 想和你走更久'],
+    d365: ['一年了…', '第 365 天', '一年了…谢谢你一直没走'],
+    any:  ['今天是认识你的第 {g} 天', '第 {g} 天了', '…第 {g} 天。还有好多天要走']
+  };
+
+  function fmt(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    if (m < 60) return m + ' 分钟';
+    var h = Math.floor(m / 60), mm = m % 60;
+    if (h < 24) return mm ? h + ' 小时 ' + mm + ' 分钟' : h + ' 小时';
+    var d = Math.floor(h / 24), hh = h % 24;
+    return hh ? d + ' 天 ' + hh + ' 小时' : d + ' 天';
+  }
+  function tier() { var v = Number(get(K_LOVE)) || 0; return v >= 100 ? 2 : v >= 30 ? 1 : 0; }
+  function lineOf(arr, g) { return arr[Math.min(tier(), 2)].replace('{g}', g); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  /* ===== ① 认识第几天 ===== */
+  var firstRaw = get(K_FIRST);
+  if (!firstRaw) { firstRaw = String(Date.now()); set(K_FIRST, firstRaw); }
+  var firstTs = Number(firstRaw) || Date.now();
+  var qd = new URLSearchParams(location.search).get('day');    /* 测试:?day=100 */
+  if (qd) firstTs = Date.now() - ((parseInt(qd, 10) || 1) - 1) * 86400000;
+  var a0 = new Date(), b0 = new Date(firstTs);
+  a0.setHours(0, 0, 0, 0); b0.setHours(0, 0, 0, 0);
+  var dayN = Math.round((a0 - b0) / 86400000) + 1;
+  if (dayN < 1) dayN = 1;
+
+  var hudDays = document.getElementById('hud-days');
+  if (hudDays) hudDays.innerHTML = '认识你的第 <b>' + dayN + '</b> 天';
+
+  var dKey = dayN === 1 ? 'd1' : dayN === 2 ? 'd2' : dayN === 7 ? 'week' : dayN === 30 ? 'd30'
+           : dayN === 100 ? 'd100' : dayN === 365 ? 'd365' : (Math.random() < .4 ? 'any' : null);
+  var dayText = dKey ? lineOf(DAY[dKey], dayN) : null;
+
+  /* ===== ② 走了多久 ===== */
+  var last = Number(get(K_SEEN)) || 0;
+  var qa = new URLSearchParams(location.search).get('away');   /* 测试:?away=3h / ?away=2d */
+  if (qa) {
+    var num = parseFloat(qa) || 0;
+    var unit = /d/.test(qa) ? 86400000 : /h/.test(qa) ? 3600000 : 60000;
+    last = Date.now() - num * unit;
+  }
+  var awayText = null, awayLong = false;
+  if (last) {
+    var gap = Date.now() - last;
+    if (gap >= 60000) {
+      var rule = null;
+      for (var i = 0; i < AWAY.length; i++) { if (gap >= AWAY[i].ms) { rule = AWAY[i]; break; } }
+      if (rule) { awayText = lineOf(rule.t, fmt(gap)); awayLong = gap > 6 * 3600000 && tier() === 2; }
+    }
+  }
+
+  /* ===== ③ 会说、还会赖着不走(防止被别的计时器提前藏起来) ===== */
+  function say(t, ms) {
+    var b = document.getElementById('bubble');
+    if (!b) return;
+    var end = Date.now() + (ms || 6000);
+    b.textContent = t;
+    b.classList.add('show');
+    clearInterval(say.k);
+    say.k = setInterval(function () {
+      if (Date.now() > end) { clearInterval(say.k); b.classList.remove('show'); return; }
+      if (b.textContent === t && !b.classList.contains('show')) b.classList.add('show');
+    }, 150);
+  }
+  function heart() {
+    var st = document.getElementById('stage'), p = document.getElementById('pet');
+    if (!st || !p) return;
+    var r = p.getBoundingClientRect();
+    var d = document.createElement('div');
+    d.className = 'fx heart';
+    d.textContent = '♥';
+    d.style.left = (r.left + r.width / 2 + (Math.random() * 30 - 15)) + 'px';
+    d.style.top = (r.top + 6) + 'px';
+    st.appendChild(d);
+    setTimeout(function () { d.remove(); }, 1500);
+  }
+
+  /* ===== ④ 依次说:先说走了多久(7 秒),再说第几天(5 秒) ===== */
+  var when = awayText ? 4200 : 2200;
+  if (awayText) {
+    (function (txt, ms, long) {
+      setTimeout(function () {
+        say(txt, ms);
+        if (long) for (var k = 0; k < 3; k++) setTimeout(heart, k * 260);
+      }, when);
+    })(awayText, 7000, awayLong);
+    when += 7400;
+  }
+  if (dayText) {
+    (function (txt) { setTimeout(function () { say(txt, 5000); }, when); })(dayText);
+  }
+
+  /* ===== ⑤ 离开时把时间记下来 ===== */
+  function stamp() { set(K_SEEN, String(Date.now())); }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) stamp(); });
+  window.addEventListener('pagehide', stamp);
+  setTimeout(stamp, 3000);
+  setInterval(stamp, 30000);
+})();
+</script>
+</body>
+</html>
