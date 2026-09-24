@@ -106,36 +106,40 @@ EOF
 cat > icon.py <<'EOF'
 import zlib, struct, os, math
 W = H = 144
-U = 144.0 / 330.0
-glow = lambda x, y: tuple(int(a + (b - a) * max(0.0, 1.0 - math.hypot(x - 72.0, y - 72.0) / 89.28)) for a, b in zip((23, 23, 27), (58, 34, 40)))
-px = [[glow(x, y) for x in range(W)] for y in range(H)]
-R = lambda x0, y0, x1, y1, c: [px[y].__setitem__(x, c) for y in range(int(round(y0)), int(round(y1))) for x in range(int(round(x0)), int(round(x1))) if 0 <= x < W and 0 <= y < H]
-PS = 7.22 * U
-POX = 49.5 * U
-POY = 72.2 * U
-P = lambda x, y, w, h, c: R(POX + x * PS, POY + y * PS, POX + (x + w) * PS, POY + (y + h) * PS, c)
-HF = [(1, 0, 2, 1), (4, 0, 2, 1), (0, 1, 7, 1), (0, 2, 7, 1), (1, 3, 5, 1), (2, 4, 3, 1), (3, 5, 1, 1)]
-WD = lambda hx, hy, hs, c: [R(hx + a * hs, hy + b * hs, hx + (a + w) * hs, hy + (b + h) * hs, c) for (a, b, w, h) in HF]
+px = [[tuple(int(a + (b - a) * max(0.0, 1.0 - math.hypot(x - 72.0, y - 72.0) / 89.28)) for a, b in zip((23, 23, 27), (58, 34, 40))) for x in range(W)] for y in range(H)]
+R = lambda x0, y0, x1, y1, c: [px[y].__setitem__(x, c) for y in range(int(y0), int(y1)) for x in range(int(x0), int(x1)) if 0 <= x < W and 0 <= y < H]
 BODY = (229, 151, 124)
 DARK = (224, 142, 115)
 INK = (26, 26, 26)
 WHITE = (252, 244, 240)
 CHEEK = (255, 143, 168)
 HRT = (255, 95, 166)
-P(0, 10, 3, 4, DARK)
-P(29, 10, 3, 4, DARK)
-P(3, 5, 26, 14, BODY)
-P(5, 19, 3, 3, BODY)
-P(11, 19, 3, 3, BODY)
-P(18, 19, 3, 3, BODY)
-P(24, 19, 3, 3, BODY)
-P(4.5, 11.5, 2.5, 1.5, CHEEK)
-P(25, 11.5, 2.5, 1.5, CHEEK)
-P(8, 11.7, 2, 1.0, INK)
-P(22, 10, 2, 4, INK)
-P(22, 10, 0.7, 1.1, WHITE)
-WD(7.2, 20.7, 3.24, HRT)
-WD(115.2, 11.7, 3.24, HRT)
+R(22, 63, 31, 76, DARK)
+R(113, 63, 122, 76, DARK)
+R(31, 47, 113, 91, BODY)
+R(37, 91, 47, 101, BODY)
+R(56, 91, 66, 101, BODY)
+R(78, 91, 88, 101, BODY)
+R(97, 91, 107, 101, BODY)
+R(36, 68, 44, 72, CHEEK)
+R(100, 68, 108, 72, CHEEK)
+R(47, 68, 53, 72, INK)
+R(91, 63, 97, 76, INK)
+R(91, 63, 93, 64, WHITE)
+R(10, 21, 17, 24, HRT)
+R(20, 21, 27, 24, HRT)
+R(7, 24, 30, 27, HRT)
+R(7, 27, 30, 30, HRT)
+R(10, 30, 27, 34, HRT)
+R(14, 34, 23, 37, HRT)
+R(17, 37, 20, 40, HRT)
+R(118, 12, 125, 15, HRT)
+R(128, 12, 135, 15, HRT)
+R(115, 15, 138, 18, HRT)
+R(115, 18, 138, 21, HRT)
+R(118, 21, 135, 25, HRT)
+R(122, 25, 131, 28, HRT)
+R(125, 28, 128, 31, HRT)
 raw = b''.join(b'\x00' + b''.join(bytes(p) for p in row) for row in px)
 ck = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
 data = b'\x89PNG\r\n\x1a\n' + ck(b'IHDR', struct.pack('>IIBBBBB', W, H, 8, 2, 0, 0, 0)) + ck(b'IDAT', zlib.compress(raw, 9)) + ck(b'IEND', b'')
@@ -148,4 +152,11 @@ python3 icon.py
 if command -v gradle >/dev/null 2>&1; then
 echo "使用系统 Gradle"
 else
-echo "下载 Gradle
+echo "下载 Gradle 8.2"
+curl -fsSL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
+unzip -q /tmp/g.zip -d /opt
+export PATH="/opt/gradle-8.2/bin:$PATH"
+fi
+gradle --version
+gradle assembleDebug --no-daemon
+echo "打包完成"
