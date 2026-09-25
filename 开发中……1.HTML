@@ -1865,66 +1865,7 @@ setTimeout(() => hint.classList.add('gone'), 8000);
 </script>
 </body>
 </html><script>
-/* 点右上角 💬 跟它聊两句（galgame 小对话） */
-(function () {
-  function tier() {
-    var v = 0;
-    try { v = Number(localStorage.getItem('pixel-pet-love')) || 0; } catch (e) {}
-    return v >= 100 ? 2 : v >= 30 ? 1 : 0;
-  }
-  var root = document.createElement('div');
-  root.innerHTML = '<style>' +
-    '#chat-btn{position:fixed;right:64px;top:calc(10px + env(safe-area-inset-top,0px));z-index:7;' +
-      'width:46px;height:46px;font-size:20px;line-height:1;background:#1d1d24;border:2px solid #3a3a44;color:#d7d3cc;cursor:pointer}' +
-    '#chat-btn:active{transform:translateY(1px)}' +
-    '#chatbox{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:10;' +
-      'display:none;background:rgba(29,29,36,.97);border:2px solid #e5977c;padding:14px 14px 28px;' +
-      'font-family:"Courier New",monospace;color:#d7d3cc}' +
-    '#chatbox.on{display:block}' +
-    '#chatname{font-size:11px;color:#e5977c;letter-spacing:2px;margin-bottom:8px}' +
-    '#chattext{font-size:14px;line-height:1.7;min-height:46px}' +
-    '#chatnext{position:absolute;right:12px;bottom:8px;font-size:11px;color:#8a8a94;animation:chatblink 1s steps(2) infinite}' +
-    '@keyframes chatblink{0%,100%{opacity:1}50%{opacity:.2}}' +
-    '</style>' +
-    '<button id="chat-btn" aria-label="聊天">💬</button>' +
-    '<div id="chatbox"><div id="chatname">小桌宠</div><div id="chattext"></div>' +
-    '<div id="chatnext">▼ 点一下继续</div></div>';
-  document.body.appendChild(root);
-
-  var box  = root.querySelector('#chatbox');
-  var txt  = root.querySelector('#chattext');
-  var tip  = root.querySelector('#chatnext');
-  var i = 0;
-
-  var LINES = [
-    '那个…你现在有空吗?',
-    '我一直想问一件事。',
-    '你当初,为什么把我留下来啊?',
-    ['……不用回答也行。',
-     '……你要是答了,我会当真的。',
-     '……其实我知道答案。你在这儿,就够了 ♥'][tier()]
-  ];
-
-  function show() {
-    txt.textContent = LINES[i];
-    tip.textContent = (i >= LINES.length - 1) ? '▼ 点一下结束' : '▼ 点一下继续';
-  }
-  function open()  { i = 0; box.classList.add('on'); show(); }
-  function close() { box.classList.remove('on'); }
-  function next()  { i++; if (i >= LINES.length) close(); else show(); }
-
-  root.querySelector('#chat-btn').addEventListener('click', function (e) {
-    e.stopPropagation();
-    if (box.classList.contains('on')) close(); else open();
-  });
-  document.addEventListener('pointerdown', function (e) {
-    if (!box.classList.contains('on')) return;
-    if (e.target.closest('#chat-btn')) return;
-    e.stopPropagation();   /* 说话的时候别触发游戏的操作 */
-    next();
-  }, true);
-})();
-</script><script>
+<script>
 /* ===== galgame 小对话:打字机 + 3 选项 + 分支反应 ===== */
 (function () {
   function love() { try { return Number(localStorage.getItem('pixel-pet-love')) || 0; } catch (e) { return 0; } }
@@ -1943,9 +1884,9 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     {
       lines: ['今天过得怎么样?', '我问的是你,不是天气。'],
       opts: [
-        { t: '挺好的',     a: ['那就好。', '你开心的时候,我也开心 ♥'], fx: 'love' },
-        { t: '有点累…',   a: ['……过来。', '不用说话,我陪你待一会儿就好。'], fx: 'blush' },
-        { t: '别烦我',     a: ['……好。', '那我安静一会儿。'], fx: 'angry' }
+        { t: '挺好的',   a: ['那就好。', '你开心的时候,我也开心 ♥'], fx: 'love' },
+        { t: '有点累…', a: ['……过来。', '不用说话,我陪你待一会儿就好。'], fx: 'blush' },
+        { t: '别烦我',   a: ['……好。', '那我安静一会儿。'], fx: 'angry' }
       ]
     },
     {
@@ -1966,7 +1907,7 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     }
   ];
 
-  var idx = 0, lines = [], i = 0, mode = '', full = '', typing = null;
+  var idx = 0, sceneIdx = 0, lines = [], i = 0, mode = '', full = '', typing = null;
 
   var root = document.createElement('div');
   root.innerHTML = '<style>' +
@@ -1976,22 +1917,20 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     '#chat-btn:active{transform:translateY(1px)}' +
     '#chatbox{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));' +
       'z-index:10;display:none;background:rgba(29,29,36,.98);border:2px solid #e5977c;' +
-      'padding:14px 14px 26px;font-family:"Courier New",monospace;color:#d7d3cc}' +
+      'padding:14px 14px 28px;font-family:"Courier New",monospace;color:#d7d3cc}' +
     '#chatbox.on{display:block}' +
     '#chatname{font-size:11px;color:#e5977c;letter-spacing:2px;margin-bottom:8px}' +
-    '#chattext{font-size:14px;line-height:1.7;min-height:48px;white-space:pre-wrap}' +
-    '#chatopts{display:none;flex-direction:column;gap:6px;margin-top:10px}' +
+    '#chattext{font-size:14px;line-height:1.7;min-height:52px;white-space:pre-wrap}' +
+    '#chatopts{display:none;flex-direction:column;gap:7px;margin-top:12px}' +
     '#chatopts.on{display:flex}' +
     '.chatopt{width:100%;text-align:left;background:#1a1a20;border:2px solid #3a3a44;color:#d7d3cc;' +
-      'font-family:inherit;font-size:13px;padding:9px 11px;cursor:pointer}' +
+      'font-family:inherit;font-size:13px;padding:10px 12px;cursor:pointer}' +
     '.chatopt:active{transform:translateY(1px)}' +
-    '#chatnext{position:absolute;right:12px;bottom:8px;font-size:11px;color:#8a8a94;' +
-      'animation:chatblink 1s steps(2) infinite}' +
-    '@keyframes chatblink{0%,100%{opacity:1}50%{opacity:.2}}' +
+    '#chatnext{position:absolute;right:12px;bottom:8px;font-size:11px;color:#8a8a94}' +
     '</style>' +
     '<button id="chat-btn" aria-label="聊天">💬</button>' +
     '<div id="chatbox"><div id="chatname">小桌宠</div><div id="chattext"></div>' +
-    '<div id="chatopts"></div><div id="chatnext">▼ 点一下继续</div></div>';
+    '<div id="chatopts"></div><div id="chatnext"></div></div>';
   document.body.appendChild(root);
 
   var box  = root.querySelector('#chatbox');
@@ -2006,28 +1945,32 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     txt.textContent = '';
     typing = setInterval(function () {
       n++; txt.textContent = s.slice(0, n);
-      if (n >= s.length) clearInterval(typing);
-    }, 38);
+      if (n >= s.length) { clearInterval(typing); updateTip(); }
+    }, 22);
   }
   function typed() { return txt.textContent.length >= full.length; }
+  function updateTip() {
+    if (mode === 'opts') { tip.textContent = '↑ 选一个'; return; }
+    var page = (i + 1) + ' / ' + lines.length;
+    tip.textContent = typed() ? ('▼ 点一下继续　' + page) : ('▼ 点一下显示完整　' + page);
+  }
 
   function say() {
     opts.classList.remove('on');
-    tip.textContent = '▼ 点一下继续';
     typeIt(lines[i]);
+    updateTip();
   }
 
   function showChoices() {
     mode = 'opts';
     clearInterval(typing);
     txt.textContent = '（你要怎么回答?）';
-    tip.textContent = '↑ 选一个';
     opts.innerHTML = '';
-    var list = SCENES[sceneIdx].opts;
+    var list = (SCENES[sceneIdx] || SCENES[0]).opts;
     list.forEach(function (o) {
       var b = document.createElement('button');
       b.className = 'chatopt';
-      b.textContent = '　' + o.t;
+      b.textContent = '▶ ' + o.t;
       b.addEventListener('click', function (e) {
         e.stopPropagation();
         mode = 'reply';
@@ -2040,11 +1983,12 @@ setTimeout(() => hint.classList.add('gone'), 8000);
       opts.appendChild(b);
     });
     opts.classList.add('on');
+    updateTip();
   }
 
   function advance() {
     if (mode === 'opts') return;
-    if (!typed()) { clearInterval(typing); txt.textContent = full; return; }
+    if (!typed()) { clearInterval(typing); txt.textContent = full; updateTip(); return; }
     i++;
     if (i < lines.length) { say(); return; }
     if (mode === 'lines') { showChoices(); return; }
@@ -2055,8 +1999,41 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     var pet = document.getElementById('pet');
     if (!pet || !kind) return;
     if (kind === 'blush') {
-      pet.classList.add('blush');
-      setTimeout(function () { pet.classList.remove('blush'); }, 2400);
+      pet.classList.remove('blush'); }, 2400);
       return;
     }
+    var id = { love: 'btn-love', angry: 'btn-angry', wiggle: 'btn-wiggle', sleep: 'btn-sleep' }[kind];
+    var btn = id ? document.getElementById(id) : null;
+    if (btn) btn.click();
+  }
 
+  function open() {
+    sceneIdx = idx % SCENES.length;
+    idx++;
+    lines = SCENES[sceneIdx].lines.slice();
+    i = 0;
+    mode = 'lines';
+    box.classList.add('on');
+    say();
+  }
+  function close() {
+    clearInterval(typing);
+    mode = '';
+    opts.classList.remove('on');
+    box.classList.remove('on');
+  }
+
+  root.querySelector('#chat-btn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (box.classList.contains('on')) close(); else open();
+  });
+
+  document.addEventListener('pointerdown', function (e) {
+    if (!box.classList.contains('on')) return;
+    if (e.target.closest('#chat-btn')) return;
+    e.stopPropagation();
+    if (mode === 'opts') return;
+    advance();
+  }, true);
+})();
+</script>
