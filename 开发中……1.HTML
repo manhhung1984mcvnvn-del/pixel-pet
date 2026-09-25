@@ -1924,4 +1924,139 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     next();
   }, true);
 })();
-</script>
+</script><script>
+/* ===== galgame 小对话:打字机 + 3 选项 + 分支反应 ===== */
+(function () {
+  function love() { try { return Number(localStorage.getItem('pixel-pet-love')) || 0; } catch (e) { return 0; } }
+  function tier() { var v = love(); return v >= 100 ? 2 : v >= 30 ? 1 : 0; }
+  function T(a) { return a[Math.min(tier(), a.length - 1)]; }
+
+  var SCENES = [
+    {
+      lines: ['那个…你现在有空吗?', '我一直想问一件事。', '你当初,为什么把我留下来啊?'],
+      opts: [
+        { t: '因为你可爱',  a: ['……你、你突然说这个干嘛!', T(['……哼。', '……算了,谢谢。', '……我也这么觉得(小声)'])], fx: 'blush' },
+        { t: '因为你可怜',  a: ['哼。', '……那我现在不可怜了,你还留着我吗?'] },
+        { t: '顺手点的',    a: ['……哦。', '那也行吧。', '反正我现在赖上你了。'], fx: 'angry' }
+      ]
+    },
+    {
+      lines: ['今天过得怎么样?', '我问的是你,不是天气。'],
+      opts: [
+        { t: '挺好的',     a: ['那就好。', '你开心的时候,我也开心 ♥'], fx: 'love' },
+        { t: '有点累…',   a: ['……过来。', '不用说话,我陪你待一会儿就好。'], fx: 'blush' },
+        { t: '别烦我',     a: ['……好。', '那我安静一会儿。'], fx: 'angry' }
+      ]
+    },
+    {
+      lines: ['我有个请求…', '你可以摸我一下吗?', '就一下。'],
+      opts: [
+        { t: '好啊',       a: ['嘿嘿…', '你手好暖。'], fx: 'love' },
+        { t: '现在不行',   a: ['……知道了。', '那我自己待着。'] },
+        { t: '你先撒个娇', a: ['诶?!…', '那、那好吧。', '(它别别扭扭地蹭了蹭你)'], fx: 'wiggle' }
+      ]
+    },
+    {
+      lines: ['我昨天做了个梦。', '梦见你不见了,', '我找了好久都找不到。'],
+      opts: [
+        { t: '我在的',       a: ['……真的?', '那你别骗我。'], fx: 'love' },
+        { t: '梦都是反的',   a: ['……嗯。', '那就好。'] },
+        { t: '(摸摸它的头)', a: ['…………', '你手好暖。'], fx: 'blush' }
+      ]
+    }
+  ];
+
+  var idx = 0, lines = [], i = 0, mode = '', full = '', typing = null;
+
+  var root = document.createElement('div');
+  root.innerHTML = '<style>' +
+    '#chat-btn{position:fixed;right:64px;top:calc(8px + env(safe-area-inset-top,0px));z-index:7;' +
+      'width:46px;height:46px;font-size:20px;line-height:1;background:#1d1d24;border:2px solid #3a3a44;' +
+      'color:#d7d3cc;cursor:pointer}' +
+    '#chat-btn:active{transform:translateY(1px)}' +
+    '#chatbox{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));' +
+      'z-index:10;display:none;background:rgba(29,29,36,.98);border:2px solid #e5977c;' +
+      'padding:14px 14px 26px;font-family:"Courier New",monospace;color:#d7d3cc}' +
+    '#chatbox.on{display:block}' +
+    '#chatname{font-size:11px;color:#e5977c;letter-spacing:2px;margin-bottom:8px}' +
+    '#chattext{font-size:14px;line-height:1.7;min-height:48px;white-space:pre-wrap}' +
+    '#chatopts{display:none;flex-direction:column;gap:6px;margin-top:10px}' +
+    '#chatopts.on{display:flex}' +
+    '.chatopt{width:100%;text-align:left;background:#1a1a20;border:2px solid #3a3a44;color:#d7d3cc;' +
+      'font-family:inherit;font-size:13px;padding:9px 11px;cursor:pointer}' +
+    '.chatopt:active{transform:translateY(1px)}' +
+    '#chatnext{position:absolute;right:12px;bottom:8px;font-size:11px;color:#8a8a94;' +
+      'animation:chatblink 1s steps(2) infinite}' +
+    '@keyframes chatblink{0%,100%{opacity:1}50%{opacity:.2}}' +
+    '</style>' +
+    '<button id="chat-btn" aria-label="聊天">💬</button>' +
+    '<div id="chatbox"><div id="chatname">小桌宠</div><div id="chattext"></div>' +
+    '<div id="chatopts"></div><div id="chatnext">▼ 点一下继续</div></div>';
+  document.body.appendChild(root);
+
+  var box  = root.querySelector('#chatbox');
+  var txt  = root.querySelector('#chattext');
+  var opts = root.querySelector('#chatopts');
+  var tip  = root.querySelector('#chatnext');
+
+  function typeIt(s) {
+    full = s;
+    clearInterval(typing);
+    var n = 0;
+    txt.textContent = '';
+    typing = setInterval(function () {
+      n++; txt.textContent = s.slice(0, n);
+      if (n >= s.length) clearInterval(typing);
+    }, 38);
+  }
+  function typed() { return txt.textContent.length >= full.length; }
+
+  function say() {
+    opts.classList.remove('on');
+    tip.textContent = '▼ 点一下继续';
+    typeIt(lines[i]);
+  }
+
+  function showChoices() {
+    mode = 'opts';
+    clearInterval(typing);
+    txt.textContent = '（你要怎么回答?）';
+    tip.textContent = '↑ 选一个';
+    opts.innerHTML = '';
+    var list = SCENES[sceneIdx].opts;
+    list.forEach(function (o) {
+      var b = document.createElement('button');
+      b.className = 'chatopt';
+      b.textContent = '　' + o.t;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        mode = 'reply';
+        lines = o.a.slice();
+        i = 0;
+        opts.classList.remove('on');
+        doFx(o.fx);
+        say();
+      });
+      opts.appendChild(b);
+    });
+    opts.classList.add('on');
+  }
+
+  function advance() {
+    if (mode === 'opts') return;
+    if (!typed()) { clearInterval(typing); txt.textContent = full; return; }
+    i++;
+    if (i < lines.length) { say(); return; }
+    if (mode === 'lines') { showChoices(); return; }
+    close();
+  }
+
+  function doFx(kind) {
+    var pet = document.getElementById('pet');
+    if (!pet || !kind) return;
+    if (kind === 'blush') {
+      pet.classList.add('blush');
+      setTimeout(function () { pet.classList.remove('blush'); }, 2400);
+      return;
+    }
+
