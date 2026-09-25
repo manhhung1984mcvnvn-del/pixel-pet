@@ -1864,4 +1864,64 @@ setTimeout(() => hint.classList.add('gone'), 8000);
 })();
 </script>
 </body>
-</html>
+</html><script>
+/* 点右上角 💬 跟它聊两句（galgame 小对话） */
+(function () {
+  function tier() {
+    var v = 0;
+    try { v = Number(localStorage.getItem('pixel-pet-love')) || 0; } catch (e) {}
+    return v >= 100 ? 2 : v >= 30 ? 1 : 0;
+  }
+  var root = document.createElement('div');
+  root.innerHTML = '<style>' +
+    '#chat-btn{position:fixed;right:64px;top:calc(10px + env(safe-area-inset-top,0px));z-index:7;' +
+      'width:46px;height:46px;font-size:20px;line-height:1;background:#1d1d24;border:2px solid #3a3a44;color:#d7d3cc;cursor:pointer}' +
+    '#chat-btn:active{transform:translateY(1px)}' +
+    '#chatbox{position:fixed;left:10px;right:10px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:10;' +
+      'display:none;background:rgba(29,29,36,.97);border:2px solid #e5977c;padding:14px 14px 28px;' +
+      'font-family:"Courier New",monospace;color:#d7d3cc}' +
+    '#chatbox.on{display:block}' +
+    '#chatname{font-size:11px;color:#e5977c;letter-spacing:2px;margin-bottom:8px}' +
+    '#chattext{font-size:14px;line-height:1.7;min-height:46px}' +
+    '#chatnext{position:absolute;right:12px;bottom:8px;font-size:11px;color:#8a8a94;animation:chatblink 1s steps(2) infinite}' +
+    '@keyframes chatblink{0%,100%{opacity:1}50%{opacity:.2}}' +
+    '</style>' +
+    '<button id="chat-btn" aria-label="聊天">💬</button>' +
+    '<div id="chatbox"><div id="chatname">小桌宠</div><div id="chattext"></div>' +
+    '<div id="chatnext">▼ 点一下继续</div></div>';
+  document.body.appendChild(root);
+
+  var box  = root.querySelector('#chatbox');
+  var txt  = root.querySelector('#chattext');
+  var tip  = root.querySelector('#chatnext');
+  var i = 0;
+
+  var LINES = [
+    '那个…你现在有空吗?',
+    '我一直想问一件事。',
+    '你当初,为什么把我留下来啊?',
+    ['……不用回答也行。',
+     '……你要是答了,我会当真的。',
+     '……其实我知道答案。你在这儿,就够了 ♥'][tier()]
+  ];
+
+  function show() {
+    txt.textContent = LINES[i];
+    tip.textContent = (i >= LINES.length - 1) ? '▼ 点一下结束' : '▼ 点一下继续';
+  }
+  function open()  { i = 0; box.classList.add('on'); show(); }
+  function close() { box.classList.remove('on'); }
+  function next()  { i++; if (i >= LINES.length) close(); else show(); }
+
+  root.querySelector('#chat-btn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (box.classList.contains('on')) close(); else open();
+  });
+  document.addEventListener('pointerdown', function (e) {
+    if (!box.classList.contains('on')) return;
+    if (e.target.closest('#chat-btn')) return;
+    e.stopPropagation();   /* 说话的时候别触发游戏的操作 */
+    next();
+  }, true);
+})();
+</script>
