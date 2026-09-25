@@ -4,6 +4,7 @@ set -e
 mkdir -p app/src/main/java/com/pet
 mkdir -p app/src/main/assets
 mkdir -p app/src/main/res/mipmap-xxhdpi
+mkdir -p app/src/main/res/mipmap-xxxhdpi
 
 HTML=$(ls -1 *.html *.HTML *.htm 2>/dev/null | head -1)
 echo "网页文件 = $HTML"
@@ -103,6 +104,24 @@ if (f) immersive();
 }
 EOF
 
+if ls icon-src.* >/dev/null 2>&1; then
+echo "===== 找到 icon-src,用它当图标 ====="
+python3 -m pip install --quiet --disable-pip-version-check pillow
+cat > mkicon.py <<'EOF'
+import glob
+from PIL import Image
+src = Image.open(glob.glob('icon-src.*')[0])
+w, h = src.size
+s = min(w, h)
+box = ((w - s) // 2, (h - s) // 2, (w - s) // 2 + s, (h - s) // 2 + s)
+out = src.crop(box).convert('RGB').resize((144, 144), Image.LANCZOS)
+out.save('app/src/main/res/mipmap-xxhdpi/ic_launcher.png')
+out.resize((192, 192), Image.LANCZOS).save('app/src/main/res/mipmap-xxxhdpi/ic_launcher.png')
+print('icon from your image ok')
+EOF
+python3 mkicon.py
+else
+echo "===== 没找到 icon-src,用内置 wink 图标 ====="
 cat > icon.py <<'EOF'
 import zlib, struct, os, math
 W = H = 144
@@ -148,6 +167,7 @@ open('app/src/main/res/mipmap-xxhdpi/ic_launcher.png', 'wb').write(data)
 print('icon ok')
 EOF
 python3 icon.py
+fi
 
 if command -v gradle >/dev/null 2>&1; then
 echo "使用系统 Gradle"
