@@ -1999,7 +1999,8 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     var pet = document.getElementById('pet');
     if (!pet || !kind) return;
     if (kind === 'blush') {
-      pet.classList.remove('blush'); }, 2400);
+      pet.classList.add('blush');
+      setTimeout(function () { pet.classList.remove('blush'); }, 2400);
       return;
     }
     var id = { love: 'btn-love', angry: 'btn-angry', wiggle: 'btn-wiggle', sleep: 'btn-sleep' }[kind];
