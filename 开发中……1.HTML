@@ -2039,23 +2039,20 @@ setTimeout(() => hint.classList.add('gone'), 8000);
 })();
 </script>
 <script>
-/* ============ 早 / 中 / 晚 主动说话(独立模块 v2) ============ */
+/* ============ 早 / 中 / 晚 主动说话 v3:会一直有话说 ============ */
 (function () {
-  var K    = 'pixel-pet-slot-said';  // 存档:哪些时段的问候已经说过了
-  var MODE = 'session';                  // 'day' = 每天每个时段只说一次(推荐)
-                                     // 'session' = 每次打开/切回前台都说
-  var GAP  = 2 * 60000;             // 只在 session 模式下生效:两次至少隔 10 分钟,防止切来切去刷屏
+  var K        = 'pixel-pet-slot-said';  // 存档:每个时段"上次说话时间 + 上次说的第几句"
+  var EVERY    = 4 * 60000;              // 挂着不动时,同一时段每隔 4 分钟换一句(想更热闹就改 60000 = 每分钟)
+  var OPEN_GAP = 60000;                  // 打开/切回前台时,离上次不足 1 分钟就先不说(防抖)
 
   function ls(k, d){ try { return localStorage.getItem(k) || d; } catch(e){ return d; } }
   function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
-  function load(){ try { return JSON.parse(ls(K, '{}')) || {}; } catch(e){ return {}; } }
+  function load(){ try { var o = JSON.parse(ls(K, '{}')); return (o && typeof o === 'object') ? o : {}; } catch(e){ return {}; } }
   function save(o){ lsSet(K, JSON.stringify(o)); }
-  function todayKey(){ var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
 
   function love(){ try { return Number(localStorage.getItem('pixel-pet-love')) || 0; } catch(e){ return 0; } }
   function tier(){ var v = love(); return v >= 100 ? 2 : v >= 30 ? 1 : 0; }
   function T(a){ return a[Math.min(tier(), a.length - 1)]; }
-  function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
 
   var SLOTS = [
     { id:'night', from:0, to:5, t:[
@@ -2102,50 +2099,59 @@ setTimeout(() => hint.classList.add('gone'), 8000);
     clearTimeout(say.t);
     say.t = setTimeout(function () { b.classList.remove('show'); }, ms || 5200);
   }
+  function pickIndex(arr, avoid){                     // 不连着说同一句
+    var i = Math.floor(Math.random() * arr.length);
+    if (arr.length > 1 && i === avoid) i = (i + 1) % arr.length;
+    return i;
+  }
 
-  function greet(){
-    if (document.hidden) return;                 // ← 后台/锁屏不算"说过了",这是之前那条坑
+  function greet(how){                                // how: 'open' | 'timer' | 'test'
+    if (document.hidden && how !== 'test') return;
 
-    var s = slotOf(nowHour()), m = load(), now = Date.now();
-    var dk = todayKey() + ':' + s.id;            // 例:2026-9-26:morning
-    var last = m[s.id] || 0;
+    var s = slotOf(nowHour());
+    var m = load();
+    var st = m[s.id] || { t: 0, i: -1 };
+    var now = Date.now();
 
-    if (MODE === 'day') {
-      if (m[dk]) return;                         // 今天这个时段说过了
-      m[dk] = now;
-    } else if (now - last < GAP) {
-      return;                                    // session 模式:离上次太近就不说
+    if (how !== 'test') {
+      var wait = (how === 'open') ? OPEN_GAP : EVERY;
+      if (now - st.t < wait) return;                  // 还没到该说的间隔,先不说
     }
 
-    m[s.id] = now;
+    var arr = T(s.t);
+    var i = pickIndex(arr, st.i);
+    st.t = now; st.i = i;
+    m[s.id] = st;
     save(m);
-    say(pick(T(s.t)), 5200);
+    say(arr[i], 5200);
     try { navigator.vibrate && navigator.vibrate(20); } catch(e){}
   }
 
-  /* 等「欢迎回来 / 认识第几天 / 走了多久」说完再说,别抢气泡 */
-  function tryGreet(left){
-    var b = document.getElementById('bubble');
-    if (!b) return;
-    if (b.classList.contains('show') && left > 0)
-      return setTimeout(function () { tryGreet(left - 1); }, 1500);
-    greet();
+  /* 等气泡空出来再说,最多等 ~4 秒(不再像上一版排 20 秒的队) */
+  function tryGreet(how){
+    var left = 6;
+    (function step(){
+      var b = document.getElementById('bubble');
+      if (!b) return;
+      if (--left > 0 && b.classList.contains('show')) return setTimeout(step, 700);
+      greet(how);
+    })();
   }
 
-  setTimeout(function () { tryGreet(20); }, 3500);                  // 打开时
-  if (MODE === 'day') setInterval(function () { greet(); }, 60000); // 页面挂着不刷新,跨时段也能说
-  document.addEventListener('visibilitychange', function () {       // 切回前台
-    if (!document.hidden) setTimeout(function () { tryGreet(8); }, 1200);
+  setTimeout(function () { tryGreet('open'); }, 3000);                   // 打开 3 秒后就说
+  setInterval(function () { tryGreet('timer'); }, 30000);                // 每 30 秒查一次,EVERY 决定实际间隔
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) setTimeout(function () { tryGreet('open'); }, 1200);
   });
 
-  /* 控制台工具 */
-  window.__petGreet      = function () { say(pick(T(slotOf(nowHour()).t)), 5200); }; // 立刻说一句(不动记录)
-  window.__petGreetClear = function () { lsSet(K, '{}'); };                          // 清掉"说过了"的记录
-  window.__petGreetWhy   = function () {                                             // 看它为什么不说
-    var s = slotOf(nowHour()), m = load();
+  window.__petGreet      = function () { greet('test'); };               // 立刻硬说一句
+  window.__petGreetClear = function () { lsSet(K, '{}'); };              // 清记录
+  window.__petGreetWhy   = function () {                                 // 为什么不说
+    var s = slotOf(nowHour()), m = load(), st = m[s.id] || { t: 0, i: -1 };
     console.log('小时 =', nowHour(), '| 时段 =', s.id,
-      '| 今天该时段说过?', !!m[todayKey() + ':' + s.id],
-      '| MODE =', MODE, '| 页面隐藏中?', document.hidden);
+      '| 本时段上次说 =', st.t ? new Date(st.t).toLocaleTimeString() : '还没说过',
+      '| 下次最早 =', st.t ? new Date(st.t + EVERY).toLocaleTimeString() : '随时',
+      '| 页面隐藏?', document.hidden);
   };
 })();
 </script>
