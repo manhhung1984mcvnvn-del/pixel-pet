@@ -2038,3 +2038,95 @@ setTimeout(() => hint.classList.add('gone'), 8000);
   }, true);
 })();
 </script>
+<script>
+/* ============ 早 / 中 / 晚 主动说话(独立模块) ============ */
+(function () {
+  var K   = 'pixel-pet-slot-said';
+  var GAP = 3 * 3600000;   // 同一时段 3 小时内不重复;想每次打开都说,把 GAP 改成 0
+
+  function ls(k, d){ try { return localStorage.getItem(k) || d; } catch(e){ return d; } }
+  function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  function load(){ try { return JSON.parse(ls(K, '{}')) || {}; } catch(e){ return {}; } }
+  function save(o){ lsSet(K, JSON.stringify(o)); }
+
+  function love(){ try { return Number(localStorage.getItem('pixel-pet-love')) || 0; } catch(e){ return 0; } }
+  function tier(){ var v = love(); return v >= 100 ? 2 : v >= 30 ? 1 : 0; }
+  function T(a){ return a[Math.min(tier(), a.length - 1)]; }
+  function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+
+  var SLOTS = [
+    { id:'night', from:0, to:5, t:[
+      ['熬夜对身体不好,快点睡~', '都这个点了还不睡?快点睡!', '…你再不睡我要生气了'],
+      ['快点睡啦!', '这么晚了我陪你一起睡?', '再玩一会儿就睡,好不好?'],
+      ['快点睡。', '我等你关灯。', '…明天还要见你呢,快去睡 ♥']] },
+    { id:'morning', from:5, to:11, t:[
+      ['…早。', '你醒了啊。', '早…今天也来了呢'],
+      ['早上好~', '早!我等你好久了', '早上好,今天想做什么?'],
+      ['早上好 ♥', '醒啦?我等了一整晚哦', '早…昨晚梦到你了']] },
+    { id:'noon', from:11, to:14, t:[
+      ['…该吃饭了。', '记得吃饭。', '午饭…别忘了'],
+      ['中午啦,记得吃午饭!', '去吃饭吧,我在这儿等你', '别忘了吃午饭哦'],
+      ['记得吃午饭 ♥', '快去吃饭!我会想你的', '今天吃了什么?记得告诉我']] },
+    { id:'afternoon', from:14, to:18, t:[
+      ['…下午了。', '喝口水吧。', '有点困?'],
+      ['下午好~喝杯水吧', '别一直坐着,起来走走', '下午了,还顺利吗?'],
+      ['下午好 ♥ 想你了', '要不要休息一下?我陪你', '喝点水,别累着自己']] },
+    { id:'evening', from:18, to:22, t:[
+      ['…晚上好。', '天黑了。', '你回来了。'],
+      ['晚上好~ 今天辛苦了', '晚上好,晚饭吃了吗?', '天黑了,早点回来'],
+      ['晚上好 ♥ 一直在等你', '辛苦啦,今天也很棒', '晚上好…想你']] },
+    { id:'late', from:22, to:24, t:[
+      ['…很晚了。', '该睡了。', '别熬太晚'],
+      ['很晚了哦,早点休息', '还有事没做完吗?别太晚', '该睡啦,明天再弄吧'],
+      ['很晚了…我陪你睡?', '去睡吧,明天见 ♥', '…别熬了,我会心疼的']] }
+  ];
+
+  function nowHour(){
+    var q = new URLSearchParams(location.search).get('hour');   // 测试:?hour=23
+    var h = q !== null ? parseInt(q, 10) : new Date().getHours();
+    return isNaN(h) ? new Date().getHours() : ((h % 24) + 24) % 24;
+  }
+  function slotOf(h){
+    for (var i = 0; i < SLOTS.length; i++) if (h >= SLOTS[i].from && h < SLOTS[i].to) return SLOTS[i];
+    return SLOTS[0];
+  }
+
+  function say(t, ms){
+    var b = document.getElementById('bubble');
+    if (!b) return;
+    b.textContent = t;
+    b.classList.add('show');
+    clearTimeout(say.t);
+    say.t = setTimeout(function () { b.classList.remove('show'); }, ms || 5200);
+  }
+
+  function greet(force){
+    var s = slotOf(nowHour());
+    var m = load();
+    if (!force && m[s.id] && Date.now() - m[s.id] < GAP) return;   // 刚说过,不重复
+    m[s.id] = Date.now();
+    save(m);
+    say(pick(T(s.t)), 5200);
+    try { navigator.vibrate && navigator.vibrate(20); } catch(e){}
+  }
+
+  /* 等「欢迎回来 / 认识第几天 / 走了多久」说完,别抢气泡 */
+  function tryGreet(left){
+    var b = document.getElementById('bubble');
+    if (!b) return;
+    if (b.classList.contains('show') && left > 0)
+      return setTimeout(function () { tryGreet(left - 1); }, 1500);
+    greet(false);
+  }
+
+  setTimeout(function () { tryGreet(20); }, 3500);   // 开机时
+  setInterval(function () { greet(false); }, 60000); // 页面久开不刷新,跨时段也能说
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) setTimeout(function () { tryGreet(8); }, 1200);
+  });
+
+  /* 测试用:控制台 __petGreet() 立刻说一次;__petGreetClear() 清掉"说过了"的记录 */
+  window.__petGreet = function () { greet(true); };
+  window.__petGreetClear = function () { lsSet(K, '{}'); };
+})();
+</script>
