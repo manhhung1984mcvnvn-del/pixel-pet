@@ -2042,9 +2042,9 @@ setTimeout(() => hint.classList.add('gone'), 8000);
 /* ============ 早 / 中 / 晚 主动说话(独立模块 v2) ============ */
 (function () {
   var K    = 'pixel-pet-slot-said';  // 存档:哪些时段的问候已经说过了
-  var MODE = 'day';                  // 'day' = 每天每个时段只说一次(推荐)
+  var MODE = 'session';                  // 'day' = 每天每个时段只说一次(推荐)
                                      // 'session' = 每次打开/切回前台都说
-  var GAP  = 10 * 60000;             // 只在 session 模式下生效:两次至少隔 10 分钟,防止切来切去刷屏
+  var GAP  = 2 * 60000;             // 只在 session 模式下生效:两次至少隔 10 分钟,防止切来切去刷屏
 
   function ls(k, d){ try { return localStorage.getItem(k) || d; } catch(e){ return d; } }
   function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
