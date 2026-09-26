@@ -2042,7 +2042,7 @@ setTimeout(() => hint.classList.add('gone'), 8000);
 /* ============ 早 / 中 / 晚 主动说话 v3:会一直有话说 ============ */
 (function () {
   var K        = 'pixel-pet-slot-said';  // 存档:每个时段"上次说话时间 + 上次说的第几句"
-  var EVERY    = 2 * 60000;              // 挂着不动时,同一时段每隔 4 分钟换一句(想更热闹就改 60000 = 每分钟)
+  var EVERY    = 30 * 1000;              // 挂着不动时,同一时段每隔 4 分钟换一句(想更热闹就改 60000 = 每分钟)
   var OPEN_GAP = 60000;                  // 打开/切回前台时,离上次不足 1 分钟就先不说(防抖)
 
   function ls(k, d){ try { return localStorage.getItem(k) || d; } catch(e){ return d; } }
